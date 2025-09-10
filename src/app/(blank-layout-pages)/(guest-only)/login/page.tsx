@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 🔹 Handle login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -25,31 +26,42 @@ export default function LoginPage() {
         'https://abdullah-test.whitescastle.com/api/auth/login',
         {
           method: 'POST',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         }
       );
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (res.ok) {
-        document.cookie = 'isLoggedIn=true; path=/; max-age=3600';
-        toast.success('Login successful!', { delay: 1000 });
-        router.push('/home');
+      if (res.ok && data.token && data.user) {
+        // ✅ Save token + user in localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        toast.success('Login successful ✅', { autoClose: 1500 });
+
+        // ✅ Role-based redirect (stable)
+        setTimeout(() => {
+          if (data.user.role === 'admin') {
+            router.replace('/home'); // 👈 replace to prevent going back
+          } else {
+            router.replace('/home'); // 👈 example for user role
+          }
+        }, 1000);
       } else {
-        toast.error(data.message || 'Login failed');
-        setError(data.message || 'Login failed. Try again.');
+        toast.error(data.message || 'Incorrect email or password');
+        setError(data.message || 'Incorrect email or password');
       }
     } catch (err) {
-      toast.error('Incorrect email or password');
-      setError('Login failed. Try again.');
+      console.error(err);
+      toast.error('Internal server error');
+      setError('Internal server error');
     } finally {
-      // Always stop loading spinner
       setLoading(false);
     }
   };
 
+  // 🔹 Loader screen
   if (loading) {
     return (
       <HomeWrapper>
@@ -66,11 +78,17 @@ export default function LoginPage() {
         className="min-h-screen w-full bg-cover bg-center flex items-center justify-center px-4"
         style={{ backgroundImage: "url('/images/login.jpg')" }}
       >
-        <div className="w-full max-w-md bg-black/40 backdrop-transparent-2xl border border-white/10 rounded-3xl p-10 shadow-xl">
-          <h2 className="text-3xl font-bold text-white mb-6 text-center">Login here</h2>
+        <div className="w-full max-w-md bg-black/40 border border-white/10 rounded-3xl p-10 shadow-xl">
+          <h2 className="text-3xl font-bold text-white mb-6 text-center">
+            Login here
+          </h2>
 
-          {error && <div className="text-red-500 text-sm mb-4 text-center">{error}</div>}
+          {/* Error Message */}
+          {error && (
+            <div className="text-red-500 text-sm mb-4 text-center">{error}</div>
+          )}
 
+          {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Email */}
             <div>
@@ -117,7 +135,13 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg flex items-center justify-center gap-2"
             >
-              {loading ? 'Loading...' : <>Login <ArrowRight size={18} /></>}
+              {loading ? (
+                'Loading...'
+              ) : (
+                <>
+                  Login <ArrowRight size={18} />
+                </>
+              )}
             </button>
           </form>
         </div>

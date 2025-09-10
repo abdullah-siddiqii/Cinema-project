@@ -3,34 +3,49 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Film, Play, Ticket, BarChart2, Menu, X } from 'lucide-react';
+import { Film, Play, Ticket, BarChart2, Menu, X, Clock, UserPlus } from 'lucide-react';
 
 export default function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false); // mobile closed by default
+  const [isOpen, setIsOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
-  // Detect screen size only on client
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
-    handleResize(); // set initial value
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const menuItems = [
-    { name: 'Add Movies', icon: Film, path: '/add-movie' },
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) setUser(JSON.parse(savedUser));
+  }, []);
+
+  const baseMenu = [
+    { name: 'Start Booking', icon: Film, path: '/start-booking' },
     { name: 'Running Movies', icon: Play, path: '/running-movies' },
-    { name: 'Available Shows', icon: Ticket, path: '/available-shows' },
-    { name: 'Report', icon: BarChart2, path: '/report' },
+    { name: 'Rooms', icon: Ticket, path: '/Rooms' },
   ];
+
+  const menuItems =
+    user?.role === 'admin'
+      ? [
+          ...baseMenu,
+          { name: 'Add Movies', icon: Film, path: '/add-movies' },
+          { name: 'Add Users', icon: UserPlus, path: '/add-user' },
+          { name: 'Add Showtimes', icon: Clock, path: '/add-showtimes' },
+          { name: 'Report', icon: BarChart2, path: '/report' },
+        ]
+      : baseMenu;
 
   const sidebarVisible = isDesktop || isOpen;
 
   return (
     <>
-      {/* Top bar with hamburger (mobile only) */}
-      <div className="md:hidden bg-black text-white flex items-center justify-between p-4 shadow ">
+      {/* Mobile Top Bar */}
+      <div className="md:hidden bg-black text-white flex items-center justify-between p-4 shadow">
         <h1 className="text-lg font-bold">Cinema Admin</h1>
         <button onClick={() => setIsOpen(!isOpen)}>
           {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -41,25 +56,39 @@ export default function Sidebar() {
       <motion.aside
         animate={{ x: sidebarVisible ? 0 : -300 }}
         transition={{ duration: 0.3 }}
-        className="fixed md:static top-0 left-0 h-screen bg-neutral-900 text-white p-4 shadow-lg flex flex-col z-50 w-64 "
+        className="fixed md:static top-0 left-0 h-[calc(100vh-77px)] w-64 bg-neutral-900 text-white p-4 shadow-lg flex flex-col z-50"
       >
-        <h1 className="hidden md:block text-xl font-bold mb-6">Cinema Admin</h1>
+        {/* Scrollable Menu with custom scrollbar */}
+  <h1 className="hidden md:block text-xl font-bold mb-6">Cinema Admin</h1>
+        <div className="flex-1 scrollbar-y ">
+  <nav className="space-y-4 scrollbar-y ">
+    {menuItems.map((item) => (
+      <button
+        key={item.name}
+        onClick={() => {
+          router.push(item.path);
+          if (!isDesktop) setIsOpen(false);
+        }}
+        className="w-full flex items-center gap-3 bg-gray-800 text-white px-4 py-3 rounded-xl shadow-md hover:shadow-lg hover:bg-gray-700 transition transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer "
+      >
+        <item.icon className="w-5 h-5" />
+        <span>{item.name}</span>
+      </button>
+    ))}
+  </nav>
+</div>
 
-        <nav className="flex-1 space-y-4">
-          {menuItems.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => {
-                router.push(item.path);
-                if (!isDesktop) setIsOpen(false); // close on mobile
-              }}
-              className="w-full flex items-center gap-3 bg-gray-800 text-white px-4 py-3 rounded-xl shadow-md hover:shadow-lg hover:bg-gray-700 transition transform hover:-translate-y-0.5 active:translate-y-0"
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{item.name}</span>
-            </button>
-          ))}
-        </nav>
+
+        {/* Footer */}
+        <div className="mt-4 text-center text-gray-400 text-sm border-t border-gray-700 pt-4">
+          <img
+            src="/images/logo.jpg"
+            alt="Logo"
+            className="mx-auto mb-2 w-[45px] h-[45px] border-2 border-gray-700 rounded-full"
+          />
+          Made by <br />
+          <span className="font-semibold text-white">Abdullah Siddiqui</span>
+        </div>
       </motion.aside>
     </>
   );
