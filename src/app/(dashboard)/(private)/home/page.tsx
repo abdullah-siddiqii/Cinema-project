@@ -33,7 +33,7 @@ export default function Home() {
       desc: "See which movies are currently showing",
     },
     {
-      name: "Sccreens",
+      name: "Screens",
       icon: Ticket,
       path: "/Screens",
       desc: "View available screening rooms",
