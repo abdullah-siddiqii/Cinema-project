@@ -27,15 +27,15 @@ export default function Home() {
       desc: "Begin the booking process for a movie",
     },
     {
-      name: "Running Movies",
+      name: "Movies",
       icon: Play,
-      path: "/running-movies",
+      path: "/movies",
       desc: "See which movies are currently showing",
     },
     {
-      name: "Rooms",
+      name: "Sccreens",
       icon: Ticket,
-      path: "/Rooms",
+      path: "/screens",
       desc: "View available screening rooms",
     },
   ];
@@ -45,12 +45,7 @@ export default function Home() {
     user?.role === "admin"
       ? [
           ...baseMenu,
-          {
-            name: "Add Movies",
-            icon: Film,
-            path: "/add-movies",
-            desc: "Add new exciting movies to your cinema",
-          },
+         
           {
             name: "Add User",
             icon: UserPlus,
@@ -63,12 +58,7 @@ export default function Home() {
             path: "/report",
             desc: "Access detailed booking reports",
           },
-          {
-            name: "Add ShowTime",
-            icon: Clock,
-            path: "/add-showtimes",
-            desc: "Manage or add new showtimes",
-          },
+         
          
         ]
       : baseMenu;

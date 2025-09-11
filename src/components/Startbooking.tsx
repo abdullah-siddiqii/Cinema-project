@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import Swal from "sweetalert2";
+import Link from "next/link"; // ✅ Corrected import
 
 interface Movie {
   _id: string;
@@ -149,9 +150,17 @@ export default function StartBooking() {
 
       {/* Main Content */}
       <div className="relative z-20 p-6 max-w-6xl mx-auto text-white">
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          🎬 Available Showtimes
-        </h1>
+        <div className="flex items-center justify-between mb-10">
+          <h1 className="text-3xl font-bold mb-6 text-center">
+            🎬 Available Showtimes
+          </h1>
+          <Link
+            href="/add-showtimes"
+            className="px-6 py-3 bg-blue-400 text-gray-900 rounded-xl shadow-lg hover:bg-blue-600 transition-all duration-300 font-bold flex items-center gap-2"
+          >
+            ➕ Add Showtime
+          </Link>
+        </div>
 
         {loading ? (
           <p className="text-center">Loading...</p>

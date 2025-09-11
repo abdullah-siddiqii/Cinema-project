@@ -114,22 +114,24 @@ export default function MoviesList() {
 
       {/* Content */}
       <div className="relative max-w-7xl mx-auto px-6 py-10">
-        <h1 className="text-4xl font-extrabold text-gray-200 text-center mb-7 drop-shadow-lg">
-          🎬 Now Showing
-        </h1>
+        
+        {/* Heading + Always Visible Add Movie Button */}
+        <div className="flex  items-center mb-10 justify-between">
+          <h1 className="text-4xl font-extrabold text-gray-200 text-center drop-shadow-lg mb-5 ">
+            🎬 Now Showing
+          </h1>
+          <Link
+            href="/add-movies"
+            className="px-6 py-3 bg-yellow-500 text-gray-900 rounded-xl shadow-lg hover:bg-yellow-600 transition-all duration-300 font-bold flex items-center gap-2"
+          >
+            ➕ Add Movie
+          </Link>
+        </div>
 
         {loading ? (
           <p className="text-center text-lg text-white">Loading movies...</p>
         ) : movies.length === 0 ? (
-          <div className="flex flex-col items-center">
-            <p className="text-lg text-white">No movies found</p>
-            <Link
-              href="/add-movies"
-              className="mt-4 px-6 py-2 bg-yellow-500 text-gray-900 rounded-lg shadow-md hover:bg-yellow-600 transition font-bold"
-            > 
-              ➕ Add Movies
-            </Link>
-          </div>
+          <p className="text-center text-lg text-white">No movies found</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-9">
             {movies.map((movie) => (
@@ -167,7 +169,7 @@ export default function MoviesList() {
                   <p className="text-gray-200 text-sm line-clamp-3">{movie.plot}</p>
 
                   {/* Action Buttons */}
-                  <div className="mt-4 flex  justify-end">
+                  <div className="mt-4 flex justify-end">
                     <button
                       onClick={() => openEditModal(movie)}
                       className="p-2 rounded-full shadow-md text-white hover:bg-gray-700 transition cursor-pointer"

@@ -102,6 +102,7 @@ export default function AddShowtime() {
 
       {/* 🔹 Main Content */}
       <div className="relative z-10 p-6 text-white max-w-3xl mx-auto">
+        
         <h1 className="text-3xl font-bold mb-4">🎬 Add Showtime</h1>
 
         {/* Add Showtime Form */}

@@ -25,17 +25,15 @@ export default function Sidebar() {
 
   const baseMenu = [
     { name: 'Start Booking', icon: Film, path: '/start-booking' },
-    { name: 'Running Movies', icon: Play, path: '/running-movies' },
-    { name: 'Rooms', icon: Ticket, path: '/Rooms' },
+    { name: 'Movies', icon: Play, path: '/movies' },
+    { name: 'Screens', icon: Ticket, path: '/screens' },
   ];
 
   const menuItems =
     user?.role === 'admin'
       ? [
           ...baseMenu,
-          { name: 'Add Movies', icon: Film, path: '/add-movies' },
           { name: 'Add Users', icon: UserPlus, path: '/add-user' },
-          { name: 'Add Showtimes', icon: Clock, path: '/add-showtimes' },
           { name: 'Report', icon: BarChart2, path: '/report' },
         ]
       : baseMenu;
