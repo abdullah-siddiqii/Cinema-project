@@ -11,7 +11,7 @@ export default function AddMoviesPage() {
   return (
     <AuthGuard>
       <HomeWrapper>
-      <div className="flex h-[calc(100vh-79px)] ">
+      <div className="flex h-[calc(100vh-79px)] overflow-hidden ">
         <ToastContainer
   position="top-center"
   autoClose={1000}
@@ -23,7 +23,7 @@ export default function AddMoviesPage() {
   theme="dark"
 />
   <Sidebar  />
-<main className="flex-1 bg-gray-100 h-[calc(100vh-79px)] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-600 scrollbar-track-gray-200">
+<main className="flex-1 bg-gray-100 h-[calc(100vh-79px)] overflow-y-auto scrollbar-y">
   <StartBooking />
 </main>
 </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
@@ -17,14 +18,15 @@ interface Room {
 const BASE_URL = "https://abdullah-test.whitescastle.com/api";
 
 export default function AddShowtime() {
+  const router = useRouter();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [movie, setMovie] = useState("");
   const [room, setRoom] = useState("");
   const [date, setDate] = useState("");
   const [times, setTimes] = useState<string[]>([""]);
+  const [loading, setLoading] = useState(false); // ✅ new state
 
-  // ✅ Format time to 12-hour AM/PM
   const formatTime = (time: string) => {
     if (!time) return "";
     const [h, m] = time.split(":");
@@ -34,7 +36,6 @@ export default function AddShowtime() {
     return `${hours}:${m} ${ampm}`;
   };
 
-  // ✅ Fetch Movies & Rooms
   useEffect(() => {
     Promise.all([
       fetch(`${BASE_URL}/movies`).then((res) => res.json()),
@@ -50,7 +51,6 @@ export default function AddShowtime() {
       .catch(() => toast.error("Failed to load movies or rooms"));
   }, []);
 
-  // ✅ Handle time inputs
   const handleTimeChange = (index: number, value: string) => {
     const updated = [...times];
     updated[index] = value;
@@ -60,20 +60,20 @@ export default function AddShowtime() {
   const removeTimeField = (index: number) =>
     setTimes(times.filter((_, i) => i !== index));
 
-  // ✅ Add Showtime
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!movie || !room || !date || times.some((t) => !t)) {
-      toast.error("All fields are required");
+      toast.error("All fields are required ❌");
       return;
     }
 
     try {
+      setLoading(true); // ✅ start loading
       const res = await fetch(`${BASE_URL}/showtimes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ movie, room, date, times }), // ✅ send array
+        body: JSON.stringify({ movie, room, date, times }),
       });
 
       if (!res.ok) {
@@ -81,31 +81,34 @@ export default function AddShowtime() {
         throw new Error(error.message || "Failed to save showtime");
       }
 
-      toast.success("Showtime(s) added ✅");
+      toast.success("Showtime added successfully");
+
       setMovie("");
       setRoom("");
       setDate("");
       setTimes([""]);
+
+      setTimeout(() => {
+        router.push("/start-booking");
+      }, 1500);
     } catch (err: any) {
       toast.error(err.message || "Error saving showtime");
+    } finally {
+      setLoading(false); // ✅ stop loading
     }
   };
 
   return (
     <div className="w-full min-h-[calc(100vh-79px)] relative">
-      {/* 🔹 Background */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/images/Showtime.jpg')" }}
       />
       <div className="absolute inset-0 bg-black/70" />
 
-      {/* 🔹 Main Content */}
       <div className="relative z-10 p-6 text-white max-w-3xl mx-auto">
-        
         <h1 className="text-3xl font-bold mb-4">🎬 Add Showtime</h1>
 
-        {/* Add Showtime Form */}
         <form
           onSubmit={handleSubmit}
           className="bg-gray-800/90 p-4 rounded-lg shadow-md space-y-4"
@@ -143,7 +146,7 @@ export default function AddShowtime() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full p-2 rounded bg-gray-700 text-white"
+            className="w-full p-2 rounded bg-gray-700 text-white "
           />
 
           {/* Times */}
@@ -169,7 +172,7 @@ export default function AddShowtime() {
                     <button
                       type="button"
                       onClick={() => removeTimeField(index)}
-                      className="px-3 py-1 bg-red-600 rounded"
+                      className="px-3 py-1 bg-red-600 rounded cursor-pointer"
                     >
                       -
                     </button>
@@ -178,7 +181,7 @@ export default function AddShowtime() {
                     <button
                       type="button"
                       onClick={addTimeField}
-                      className="px-3 py-1 bg-green-600 rounded"
+                      className="px-3 py-1 bg-green-600 rounded cursor-pointer"
                     >
                       +
                     </button>
@@ -190,9 +193,15 @@ export default function AddShowtime() {
 
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white"
+            disabled={loading} // ✅ disable button
+            className={`px-4 py-2 rounded text-white cursor-pointer w-full transition 
+              ${
+                loading
+                  ? "bg-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
           >
-            Add Showtime
+            {loading ? "⏳ Adding..." : "Add Showtime"}
           </button>
         </form>
       </div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import Swal from "sweetalert2";
-import Link from "next/link"; // ✅ Corrected import
+import Link from "next/link";
 
 interface Movie {
   _id: string;
@@ -37,7 +37,9 @@ export default function StartBooking() {
   const [newTimes, setNewTimes] = useState<string[]>([""]);
   const [selectedMovieId, setSelectedMovieId] = useState("");
 
-  // ✅ Format time into AM/PM
+  const [updating, setUpdating] = useState(false); // ✅ for edit save
+  const [deletingId, setDeletingId] = useState<string | null>(null); // ✅ for delete
+
   const formatTime = (time: string) => {
     if (!time) return "";
     const [h, m] = time.split(":");
@@ -47,7 +49,6 @@ export default function StartBooking() {
     return `${hours}:${m} ${ampm}`;
   };
 
-  // ✅ Fetch showtimes and movies
   const fetchShowtimes = async () => {
     try {
       const [resShowtimes, resMovies] = await Promise.all([
@@ -55,12 +56,13 @@ export default function StartBooking() {
         fetch(`${BASE_URL}/movies`),
       ]);
 
+      if (!resShowtimes.ok || !resMovies.ok) throw new Error("Failed to fetch");
+
       const showtimeData = await resShowtimes.json();
       const movieData = await resMovies.json();
 
       setMovies(movieData);
 
-      // Ensure movie object is properly mapped
       const showtimesWithMovies = showtimeData.map((st: any) => ({
         ...st,
         movie:
@@ -71,8 +73,8 @@ export default function StartBooking() {
       }));
 
       setShowtimes(showtimesWithMovies);
-    } catch (err) {
-      toast.error("Failed to load showtimes");
+    } catch {
+      toast.error("❌ Failed to load showtimes");
     } finally {
       setLoading(false);
     }
@@ -92,26 +94,30 @@ export default function StartBooking() {
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
       confirmButtonText: "Yes, delete it!",
+      background: "black",
+      color: "white",
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+          setDeletingId(id); // ✅ show deleting
           const res = await fetch(`${BASE_URL}/showtimes/${id}`, {
             method: "DELETE",
           });
           if (!res.ok) throw new Error("Failed");
-          toast.success("Showtime deleted");
+          toast.success("Showtime deleted successfully");
           fetchShowtimes();
         } catch {
-          toast.error("Error deleting showtime");
+          toast.error("❌ Error deleting showtime");
+        } finally {
+          setDeletingId(null);
         }
       }
     });
   };
 
-  // ✅ Open edit modal
   const handleEdit = (st: Showtime) => {
     setEditShow(st);
-    setNewDate(st.date.split("T")[0]);
+    setNewDate(st.date ? st.date.split("T")[0] : "");
     setNewTimes(st.times);
     setSelectedMovieId(st.movie?._id || "");
   };
@@ -119,8 +125,8 @@ export default function StartBooking() {
   // ✅ Save updated showtime
   const handleUpdate = async () => {
     if (!editShow) return;
-
     try {
+      setUpdating(true); // ✅ show saving
       const res = await fetch(`${BASE_URL}/showtimes/${editShow._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -131,39 +137,39 @@ export default function StartBooking() {
         }),
       });
       if (!res.ok) throw new Error("Failed");
-      toast.success("Showtime updated");
+      toast.success("✅ Showtime updated");
       setEditShow(null);
       fetchShowtimes();
     } catch {
-      toast.error("Error updating showtime");
+      toast.error("❌ Error updating showtime");
+    } finally {
+      setUpdating(false);
     }
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-79px)] relative">
-      {/* Background Image + Overlay */}
+    <div className="w-full min-h-[calc(100vh-79px)] relative overflow-y-auto">
+      {/* Background */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/images/booking.jpg')" }}
       />
-      <div className="absolute inset-0 bg-black/70" />
+      <div className="absolute inset-0 bg-black/60" />
 
-      {/* Main Content */}
+      {/* Content */}
       <div className="relative z-20 p-6 max-w-6xl mx-auto text-white">
         <div className="flex items-center justify-between mb-10">
-          <h1 className="text-3xl font-bold mb-6 text-center">
-            🎬 Available Showtimes
-          </h1>
+          <h1 className="text-3xl font-bold">🎬 Available Showtimes</h1>
           <Link
             href="/add-showtimes"
-            className="px-6 py-3 bg-blue-400 text-gray-900 rounded-xl shadow-lg hover:bg-blue-600 transition-all duration-300 font-bold flex items-center gap-2"
+            className="px-6 py-3 bg-green-500 text-gray-900 rounded-xl shadow-lg hover:bg-green-600 transition-all font-bold flex items-center gap-2 cursor-pointer"
           >
             ➕ Add Showtime
           </Link>
         </div>
 
         {loading ? (
-          <p className="text-center">Loading...</p>
+          <p className="text-center">⏳ Loading...</p>
         ) : showtimes.length === 0 ? (
           <p className="text-center">No showtimes available</p>
         ) : (
@@ -173,7 +179,7 @@ export default function StartBooking() {
                 key={st._id}
                 className="relative bg-gray-900 rounded-xl p-5 shadow-lg border border-gray-700 flex flex-col z-10"
               >
-                {/* Edit/Delete Buttons */}
+                {/* Edit/Delete */}
                 <div className="absolute top-3 right-3 flex gap-2">
                   <button
                     onClick={() => handleEdit(st)}
@@ -184,28 +190,31 @@ export default function StartBooking() {
                   </button>
                   <button
                     onClick={() => handleDelete(st._id)}
+                    disabled={deletingId === st._id}
                     title="Delete Showtime"
-                    className="text-red-400 hover:text-red-500 cursor-pointer"
+                    className={`cursor-pointer ${
+                      deletingId === st._id
+                        ? "text-gray-500"
+                        : "text-red-400 hover:text-red-500"
+                    }`}
                   >
-                    <FaTrash />
+                    {deletingId === st._id ? "⏳" : <FaTrash />}
                   </button>
                 </div>
 
-                {/* Movie Title */}
-                <h2 className="text-xl font-bold text-white mb-3 text-center">
+                {/* Movie */}
+                <h2 className="text-xl font-bold text-center mb-3">
                   🎬 {st.movie?.title || "Unknown Movie"}
                 </h2>
 
-                {/* Date & Room */}
-                <p className="text-sm text-gray-400 mb-1 text-center">
-                  📅 {st.date.split("T")[0]}
+                <p className="text-sm text-gray-400 text-center">
+                  📅 {st.date ? st.date.split("T")[0] : "N/A"}
                 </p>
-                <p className="text-sm text-gray-400 mb-3 text-center">
+                <p className="text-sm text-gray-400 text-center mb-3">
                   🏠 {st.room?.name} ({st.room?.seatingCapacity} seats)
                 </p>
 
-                {/* Show Times */}
-                <div className="flex flex-wrap justify-center gap-2 mb-3">
+                <div className="flex flex-wrap justify-center gap-2 mb-4">
                   {st.times.map((t, i) => (
                     <span
                       key={i}
@@ -216,10 +225,9 @@ export default function StartBooking() {
                   ))}
                 </div>
 
-                {/* Start Booking Button */}
                 <button
                   onClick={() =>
-                    toast.success(`Booking started for ${st.movie?.title}`)
+                    toast.success(`🎟 Booking started for ${st.movie?.title}`)
                   }
                   className="bg-blue-400 hover:bg-blue-600 px-4 py-2 rounded-lg text-black font-semibold w-full mt-auto cursor-pointer"
                 >
@@ -231,30 +239,27 @@ export default function StartBooking() {
         )}
       </div>
 
-      {/* ✅ Edit Modal */}
+      {/* Edit Modal */}
       {editShow && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-[400px]">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-900 p-6 rounded-xl shadow-lg w-[400px]">
             <h2 className="text-xl font-semibold mb-4">Edit Showtime</h2>
 
-            {/* Movie Dropdown */}
-            <label className="block mb-2">
-              Movie
-              <select
-                value={selectedMovieId}
-                onChange={(e) => setSelectedMovieId(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 text-white mb-4"
-              >
-                {movies.map((m) => (
-                  <option key={m._id} value={m._id}>
-                    {m.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <label className="block mb-2">Movie</label>
+            <select
+              value={selectedMovieId}
+              onChange={(e) => setSelectedMovieId(e.target.value)}
+              className="w-full p-2 rounded bg-gray-800 text-white mb-4"
+            >
+              <option value="">-- Select a Movie --</option>
+              {movies.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.title}
+                </option>
+              ))}
+            </select>
 
-            {/* Date */}
-            <label className="block text-sm mb-2">Date</label>
+            <label className="block mb-2">Date</label>
             <input
               type="date"
               value={newDate}
@@ -262,8 +267,7 @@ export default function StartBooking() {
               className="w-full p-2 rounded bg-gray-800 text-white mb-4"
             />
 
-            {/* Times */}
-            <label className="block text-sm mb-2">Times</label>
+            <label className="block mb-2">Times</label>
             {newTimes.map((t, i) => (
               <input
                 key={i}
@@ -281,15 +285,21 @@ export default function StartBooking() {
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => setEditShow(null)}
-                className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600"
+                className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer"
+                disabled={updating}
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdate}
-                className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+                disabled={updating}
+                className={`px-4 py-2 rounded cursor-pointer ${
+                  updating
+                    ? "bg-blue-500 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
               >
-                Save
+                {updating ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

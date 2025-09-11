@@ -58,6 +58,7 @@ export default function AddUserPage() {
       } else {
         toast.success("User added successfully ✅");
         setForm({ name: "", email: "", password: "", role: "user" });
+        setTimeout(() => router.push("/users"), 1500);
       }
     } catch (error) {
       toast.error("Server error, please try again later");

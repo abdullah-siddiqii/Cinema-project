@@ -5,11 +5,10 @@ import Sidebar from '@/components/Sidebar';
 import { ToastContainer } from 'react-toastify/unstyled';
 import ShowTimes from '@/components/ShowTimes';
 import AuthGuard from '@/components/AuthGuard';
+import Adduse from '@/components/Adduse';
+import { useEffect, useState } from 'react';
 import AdminRoute from '@/components/AdminRoute';
-import { useEffect, use, useState } from 'react';
-import HomeWrapper from '@/components/HomeWrapper';
-import AddMovies from '@/components/AddMovies';
-
+import UserList from '@/components/UserList';
 
 export default function ShowTimesPage() {
      const [user, setUser] = useState<any>(null);
@@ -22,13 +21,12 @@ export default function ShowTimesPage() {
       }, []);
   return (
     <AuthGuard>
-        <HomeWrapper>
-      <AdminRoute user={user}>
-        <div className="flex h-[calc(100vh-77px)] ">
-          <ToastContainer
-            position="top-center"
-            autoClose={1500}
-            hideProgressBar={false}
+        <AdminRoute user={user}>
+      <div className="flex h-[calc(100vh-77px)] overflow-hidden">
+        <ToastContainer
+  position="top-center"
+  autoClose={1500}
+  hideProgressBar={false}
   newestOnTop={false}
   closeOnClick
   pauseOnHover
@@ -36,12 +34,11 @@ export default function ShowTimesPage() {
   theme="dark"
 />
   <Sidebar />
-  <main className="flex-1 bg-gray-100  h-[calc(100vh-79px)]   ">
-    <AddMovies />
+  <main className="flex-1 bg-gray-900  h-[calc(100vh-77px)] ">
+    <UserList/>
   </main>
 </div>
 </AdminRoute>
-</HomeWrapper>
 </AuthGuard>
   );
 }

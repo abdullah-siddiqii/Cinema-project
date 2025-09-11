@@ -6,7 +6,6 @@ import { ToastContainer } from 'react-toastify';
 import AuthGuard from '@/components/AuthGuard';
 import RoomList from '@/components/ScreenList';
 import Addscreen from '@/components/Addscreen';
-import ScreenList from '@/components/ScreenList';
 
 
 export default function AddMoviesPage() {
@@ -28,7 +27,7 @@ export default function AddMoviesPage() {
         <Sidebar />
         <main className="flex-1 bg-gray-100 h-[calc(100vh-77px)] ">
           {/* Pass the actual user object to Room component */}
-          <ScreenList/>
+          <Addscreen/>
         </main>
       </div>
     </AuthGuard>

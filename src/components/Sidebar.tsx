@@ -26,14 +26,14 @@ export default function Sidebar() {
   const baseMenu = [
     { name: 'Start Booking', icon: Film, path: '/start-booking' },
     { name: 'Movies', icon: Play, path: '/movies' },
-    { name: 'Screens', icon: Ticket, path: '/screens' },
+    { name: 'Screens', icon: Ticket, path: '/Screens' },
   ];
 
   const menuItems =
     user?.role === 'admin'
       ? [
           ...baseMenu,
-          { name: 'Add Users', icon: UserPlus, path: '/add-user' },
+          { name: 'Users', icon: UserPlus, path: '/users' },
           { name: 'Report', icon: BarChart2, path: '/report' },
         ]
       : baseMenu;

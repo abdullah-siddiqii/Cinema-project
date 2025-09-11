@@ -8,6 +8,7 @@ import AuthGuard from '@/components/AuthGuard';
 import Adduse from '@/components/Adduse';
 import { useEffect, useState } from 'react';
 import AdminRoute from '@/components/AdminRoute';
+import UserList from '@/components/UserList';
 
 export default function ShowTimesPage() {
      const [user, setUser] = useState<any>(null);
@@ -21,7 +22,7 @@ export default function ShowTimesPage() {
   return (
     <AuthGuard>
         <AdminRoute user={user}>
-      <div className="flex h-[calc(100vh-77px)] ">
+      <div className="flex h-[calc(100vh-77px)] overflow-hidden">
         <ToastContainer
   position="top-center"
   autoClose={1500}
@@ -33,7 +34,7 @@ export default function ShowTimesPage() {
   theme="dark"
 />
   <Sidebar />
-  <main className="flex-1 bg-gray-100  h-[calc(100vh-77px)]   ">
+  <main className="flex-1 bg-gray-900  h-[calc(100vh-77px)] ">
     <Adduse/>
   </main>
 </div>

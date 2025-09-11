@@ -170,8 +170,8 @@ export default function AddMovies() {
 
       const result = await res.json().catch(() => null);
       if (res.ok) {
-        toast.success('Movie added successfully!', { delay: 500 });
-        setTimeout(() => router.push('/running-movies'), 2000);
+        toast.success('Movie added successfully!', { autoClose: 2000 });
+        setTimeout(() => router.push('/movies'), 2000);
       } else {
         toast.error(result?.error || 'Failed to add movie.');
       }
@@ -211,7 +211,7 @@ export default function AddMovies() {
               setSuggestions([]);
               setShowSuggestions(false);
             }}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
+            className={`px-4 py-2 rounded-lg font-semibold transition  cursor-pointer ${
               !manualMode
                 ? 'bg-indigo-600 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -226,7 +226,7 @@ export default function AddMovies() {
               setSuggestions([]);
               setShowSuggestions(false);
             }}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
+            className={`px-4 py-2 rounded-lg font-semibold transition  cursor-pointer ${
               manualMode
                 ? 'bg-indigo-600 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -254,7 +254,7 @@ export default function AddMovies() {
               />
               <button
                 onClick={handleSearch}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl ml-2 transition duration-300"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl ml-2 transition duration-300  cursor-pointer"
               >
                 Search
               </button>
@@ -346,7 +346,7 @@ export default function AddMovies() {
               <button
                 onClick={handleAddMovie}
                 disabled={adding}
-                className={`w-full py-2 rounded-xl font-semibold transition duration-300 ${
+                className={`w-full py-2 rounded-xl font-semibold  cursor-pointer transition duration-300 ${
                   adding
                     ? 'bg-gray-500 cursor-not-allowed'
                     : 'bg-indigo-600 hover:bg-indigo-700 text-white'

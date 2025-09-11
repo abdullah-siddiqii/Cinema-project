@@ -63,7 +63,7 @@ export default function EditMovieModal({ movie, isOpen, onClose, onSave }: EditM
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 "
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -107,14 +107,14 @@ export default function EditMovieModal({ movie, isOpen, onClose, onSave }: EditM
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-600 rounded-xl text-white hover:bg-gray-700 transition"
+                className="px-4 py-2 bg-gray-600 rounded-xl text-white hover:bg-gray-700 transition  cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="px-4 py-2 bg-indigo-600 rounded-xl text-white hover:bg-indigo-700 transition"
+                className="px-4 py-2 bg-indigo-600 rounded-xl text-white hover:bg-indigo-700 transition  cursor-pointer"
               >
                 {loading ? 'Saving...' : 'Save'}
               </button>

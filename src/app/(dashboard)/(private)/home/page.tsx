@@ -35,7 +35,7 @@ export default function Home() {
     {
       name: "Sccreens",
       icon: Ticket,
-      path: "/screens",
+      path: "/Screens",
       desc: "View available screening rooms",
     },
   ];
@@ -47,9 +47,9 @@ export default function Home() {
           ...baseMenu,
          
           {
-            name: "Add User",
+            name: "User",
             icon: UserPlus,
-            path: "/add-user",
+            path: "/users",
             desc: "Create a new cinema manager or staff account",
           },
           {
