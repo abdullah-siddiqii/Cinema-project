@@ -11,7 +11,7 @@ export default function AddMoviesPage() {
   return (
     <AuthGuard>
       <HomeWrapper>
-      <div className="flex h-[calc(100vh-79px)] overflow-hidden ">
+      <div className="flex h-[calc(100vh-79px)] overflow-hidden">
         <ToastContainer
   position="top-center"
   autoClose={1000}

@@ -46,38 +46,45 @@ export default function UserList() {
   }, []);
 
   // ✅ Delete user with SweetAlert2
-  const handleDelete = async (id: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) return toast.error("Unauthorized ❌");
+ // ✅ Delete user with SweetAlert2
+const handleDelete = async (id: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) return toast.error("Unauthorized ❌");
 
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won’t be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete it!",
-      background: "black",
-      color: "white",
-    });
+  const result = await Swal.fire({
+    title: "Are you sure?",
+    text: "You won’t be able to revert this!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Yes, delete it!",
+    background: "black",
+    color: "white",
+  });
 
-    if (result.isConfirmed) {
-      try {
-        const res = await fetch(`${API_URL}/${id}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+  if (result.isConfirmed) {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        if (!res.ok) throw new Error("Failed to delete user");
+      const data = await res.json(); // ✅ read backend response
 
-        setUsers(users.filter((u) => u._id !== id));
-        toast.success("User has been deleted.");
-      } catch (err: any) {
-        toast.error(err.message);
+      if (!res.ok) {
+        toast.error(data.message || "Failed to delete user"); // ✅ show custom backend error
+        return;
       }
+
+      setUsers(users.filter((u) => u._id !== id));
+      toast.success(data.message || "User has been deleted ✅");
+    } catch (err: any) {
+      toast.error(err.message);
     }
-  };
+  }
+};
+
 
   // ✅ Open edit modal
   const handleEdit = (user: User) => {
