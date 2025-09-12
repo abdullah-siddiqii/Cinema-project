@@ -17,7 +17,7 @@ export default function HomeWrapper({ children }: HomeWrapperProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-black">
+      <div className="h-[calc(100vh-80px)] w-full flex items-center justify-center bg-black">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-yellow-400"></div>
       </div>
     );

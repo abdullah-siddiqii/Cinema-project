@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
@@ -107,8 +108,12 @@ export default function AddShowtime() {
       <div className="absolute inset-0 bg-black/70" />
 
       <div className="relative z-10 p-6 text-white max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-4">🎬 Add Showtime</h1>
-
+        <div className=" flex flex-col md:flex-row md:items-center md:justify-between">
+        <h1 className="text-3xl font-bold mb-4">➕Add Shows</h1>
+        <Link href="/start-booking" className="mb-6 inline-block text-white font-bold bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
+          &larr; Back to List
+        </Link>
+</div>
         <form
           onSubmit={handleSubmit}
           className="bg-gray-800/90 p-4 rounded-lg shadow-md space-y-4"
@@ -181,7 +186,7 @@ export default function AddShowtime() {
                     <button
                       type="button"
                       onClick={addTimeField}
-                      className="px-3 py-1 bg-green-600 rounded cursor-pointer"
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded cursor-pointer font-bold"
                     >
                       +
                     </button>
@@ -194,11 +199,11 @@ export default function AddShowtime() {
           <button
             type="submit"
             disabled={loading} // ✅ disable button
-            className={`px-4 py-2 rounded text-white cursor-pointer w-full transition 
+            className={`px-4 py-2 rounded-lg text-white cursor-pointer w-full transition 
               ${
                 loading
                   ? "bg-gray-500 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
+                  : "bg-blue-600 hover:bg-blue-700 font-bold"
               }`}
           >
             {loading ? "⏳ Adding..." : "Add Showtime"}

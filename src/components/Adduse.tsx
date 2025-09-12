@@ -6,6 +6,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AuthGuard from "@/components/AuthGuard";
 import HomeWrapper from "@/components/HomeWrapper";
+import Link from "next/link";
 
 export default function AddUserPage() {
   const router = useRouter();
@@ -56,9 +57,9 @@ export default function AddUserPage() {
       if (!res.ok) {
         toast.error(data.message || "Failed to add user");
       } else {
-        toast.success("User added successfully ✅");
+        toast.success("User added successfully ✅", { autoClose: 2000 });
         setForm({ name: "", email: "", password: "", role: "user" });
-        setTimeout(() => router.push("/users"), 1500);
+        setTimeout(() => router.push("/users"), 2000);
       }
     } catch (error) {
       toast.error("Server error, please try again later");
@@ -66,25 +67,31 @@ export default function AddUserPage() {
       setLoading(false);
     }
   };
-  if (loading) {
-    return (
-      <HomeWrapper>
-        <div className="flex items-center justify-center min-h-screen bg-black">
+  if(loading){
+    return(
+      <HomeWrapper> <div className="flex items-center justify-center min-h-screen bg-black">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-yellow-400"></div>
         </div>
       </HomeWrapper>
     );
   }
+
   return (
     <AuthGuard>
         <div className="flex justify-center items-center min-h-[calc(100vh-77px)]">
              <div
       className="w-full min-h-[calc(100vh-77px)] flex justify-center items-start 
       bg-cover bg-center bg-no-repeat overflow-hidden "
-      style={{ backgroundImage: "url('/images/adduser.jpg')" ,opacity:"93%" }}
+      style={{ backgroundImage: "url('/images/adduser.jpg')" ,opacity:"100%" }}
     >
-          <div className="bg-gray-900 text-white rounded-2xl shadow-xl p-8 max-w-lg w-full mt-6">
-            <h2 className="text-2xl font-bold mb-6 text-center">Add New User</h2>
+       <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/70 z-10"></div>
+          <div className="bg-gray-900 text-white rounded-2xl shadow-xl p-8 max-w-lg w-full mt-6 z-20">
+             <div className=" flex flex-col md:flex-row md:items-center md:justify-between">
+              <h1 className="text-2xl font-bold mb-4 ">➕Add User</h1>
+              <Link href="/users" className="mb-6 inline-block text-white font-bold   bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg transition">
+                &larr; Back to List
+              </Link>
+      </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Name */}
@@ -95,6 +102,7 @@ export default function AddUserPage() {
                   name="name"
                   value={form.name}
                   onChange={handleChange}
+                  placeholder="Full Name"
                   className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500"
                   required
                 />
@@ -107,6 +115,7 @@ export default function AddUserPage() {
                   type="email"
                   name="email"
                   value={form.email}
+                  placeholder="Email Address"
                   onChange={handleChange}
                   className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500"
                   required
@@ -120,6 +129,7 @@ export default function AddUserPage() {
                   type="password"
                   name="password"
                   value={form.password}
+                  placeholder="Password"
                   onChange={handleChange}
                   className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500"
                   required

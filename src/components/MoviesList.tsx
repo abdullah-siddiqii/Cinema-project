@@ -117,12 +117,12 @@ export default function MoviesList() {
         
         {/* Heading + Always Visible Add Movie Button */}
         <div className="flex  items-center mb-10 justify-between">
-          <h1 className="text-4xl font-extrabold text-gray-200 text-center drop-shadow-lg mb-5 ">
+          <h1 className="text-4xl font-bold text-gray-200 text-center drop-shadow-lg mb-5 ">
             🎬 Now Showing
           </h1>
           <Link
             href="/add-movies"
-            className="px-6 py-3 bg-yellow-500 text-gray-900 rounded-xl shadow-lg hover:bg-yellow-600 transition-all duration-300 font-bold flex items-center gap-2"
+            className="px-6 py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg  transition-all duration-300 font-bold flex items-center gap-2"
           >
             ➕ Add Movie
           </Link>

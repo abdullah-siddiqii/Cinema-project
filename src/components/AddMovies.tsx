@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useRouter } from 'next/navigation';
 import HomeWrapper from './HomeWrapper';
+import Link from 'next/link';
 
 interface Movie {
   Title: string;
@@ -15,7 +16,6 @@ interface Movie {
 
 export default function AddMovies() {
   const [loading, setLoading] = useState(true);
-
   const [query, setQuery] = useState('');
   const [movieData, setMovieData] = useState<Movie | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
@@ -26,18 +26,17 @@ export default function AddMovies() {
   const [adding, setAdding] = useState(false);
 
   const router = useRouter();
-
   const API_KEY = '45dc88ed';
   const BASE_URL = 'https://abdullah-test.whitescastle.com';
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // loader
+  // Loader
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
 
-  // suggestions
+  // Suggestions
   const fetchSuggestions = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       setSuggestions([]);
@@ -71,7 +70,7 @@ export default function AddMovies() {
     }
   };
 
-  // debounce
+  // Debounce for suggestions
   useEffect(() => {
     if (!query || manualMode) {
       setSuggestions([]);
@@ -87,7 +86,7 @@ export default function AddMovies() {
     };
   }, [query, manualMode]);
 
-  // select suggestion
+  // Select suggestion
   const handleSelectSuggestion = async (title: string) => {
     try {
       const res = await fetch(
@@ -105,14 +104,16 @@ export default function AddMovies() {
         setSuggestions([]);
         setShowSuggestions(false);
         setQuery(data.Title);
-        toast.success('Movie selected!');
+
+        // ✅ Force toast after setting state
+        setTimeout(() => toast.success('✅ Movie selected!'), 100);
       }
     } catch {
       toast.error('Error fetching movie details');
     }
   };
 
-  // search button
+  // Manual search button
   const handleSearch = async () => {
     if (!query) return;
     try {
@@ -140,7 +141,7 @@ export default function AddMovies() {
     }
   };
 
-  // add movie
+  // Add movie to DB
   const handleAddMovie = async () => {
     if (!movieData) return;
     setAdding(true);
@@ -170,7 +171,7 @@ export default function AddMovies() {
 
       const result = await res.json().catch(() => null);
       if (res.ok) {
-        toast.success('Movie added successfully!', { autoClose: 2000 });
+        toast.success('🎉 Movie added successfully!', { autoClose: 2000 });
         setTimeout(() => router.push('/movies'), 2000);
       } else {
         toast.error(result?.error || 'Failed to add movie.');
@@ -199,9 +200,18 @@ export default function AddMovies() {
       style={{ backgroundImage: "url('/images/home.jpg')" }}
     >
       <div className="max-w-2xl w-full bg-black/80 p-6 rounded-3xl shadow-2xl mt-1">
-        <h2 className="text-2xl font-bold mb-4 text-white text-center">Add New Movie</h2>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <h1 className="text-3xl font-bold mb-4">🎬 Add Movies</h1>
+          <Link
+            href="/movies"
+            className="mb-6 font-bold inline-block text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition"
+          >
+            &larr; Back to List
+          </Link>
+        </div>
 
-        {/* Toggle */}
+        {/* Toggle Search / Manual */}
         <div className="flex justify-center gap-4 mb-6">
           <button
             onClick={() => {
@@ -211,9 +221,9 @@ export default function AddMovies() {
               setSuggestions([]);
               setShowSuggestions(false);
             }}
-            className={`px-4 py-2 rounded-lg font-semibold transition  cursor-pointer ${
+            className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
               !manualMode
-                ? 'bg-indigo-600 text-white'
+                ? 'text-white bg-blue-600 hover:bg-blue-700'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
@@ -226,7 +236,7 @@ export default function AddMovies() {
               setSuggestions([]);
               setShowSuggestions(false);
             }}
-            className={`px-4 py-2 rounded-lg font-semibold transition  cursor-pointer ${
+            className={`px-4 py-2 rounded-lg font-semibold transition cursor-pointer ${
               manualMode
                 ? 'bg-indigo-600 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -236,7 +246,7 @@ export default function AddMovies() {
           </button>
         </div>
 
-        {/* Search */}
+        {/* Search Input */}
         {!manualMode && (
           <div className="relative mb-6 flex flex-col">
             <div className="flex">
@@ -250,16 +260,17 @@ export default function AddMovies() {
                   }
                 }}
                 placeholder="Enter movie name"
-                className="flex-grow p-2 border rounded-xl bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-grow p-2 border rounded-xl bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
               <button
                 onClick={handleSearch}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl ml-2 transition duration-300  cursor-pointer"
+                className="text-white font-bold bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl ml-2 transition duration-300 cursor-pointer"
               >
                 Search
               </button>
             </div>
 
+            {/* Suggestions Dropdown */}
             {showSuggestions && (
               <ul className="absolute z-50 top-full left-0 w-full bg-gray-800 border border-gray-600 rounded-b-xl mt-1 max-h-64 overflow-y-auto shadow-lg">
                 {isSearching ? (
@@ -269,7 +280,7 @@ export default function AddMovies() {
                     <li
                       key={idx}
                       onClick={() => handleSelectSuggestion(movie.Title)}
-                      className="px-3 py-2 hover:bg-indigo-600 cursor-pointer text-white"
+                      className="px-3 py-2 hover:bg-blue-600 cursor-pointer text-white"
                     >
                       {movie.Title} ({movie.Year})
                     </li>
@@ -285,6 +296,7 @@ export default function AddMovies() {
         {/* Movie Form */}
         {movieData && (
           <div className="flex flex-wrap gap-4 text-white">
+            {/* Left Side Form */}
             <div className="flex-1 min-w-[250px] space-y-3">
               <div>
                 <label className="block font-semibold mb-1">Title</label>
@@ -343,25 +355,27 @@ export default function AddMovies() {
                 )}
               </div>
 
+              {/* Submit */}
               <button
                 onClick={handleAddMovie}
                 disabled={adding}
-                className={`w-full py-2 rounded-xl font-semibold  cursor-pointer transition duration-300 ${
+                className={`w-full py-2 rounded-xl font-semibold cursor-pointer transition duration-300 ${
                   adding
                     ? 'bg-gray-500 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    : 'text-white bg-blue-600 hover:bg-blue-700'
                 }`}
               >
                 {adding ? 'Adding...' : 'Add Movie'}
               </button>
             </div>
 
+            {/* Right Side Poster */}
             {movieData.Poster && (
               <div className="flex-1 min-w-[200px] flex justify-center items-start">
                 <img
                   src={movieData.Poster}
-                  alt="No poster available"
-                  className="rounded-xl shadow-lg w-64 h-100 mt-6 object-cover border border-gray-600 alt"
+                  alt="Poster not available"
+                  className="rounded-xl shadow-lg w-64 h-100 mt-6 object-cover border border-gray-600"
                 />
               </div>
             )}

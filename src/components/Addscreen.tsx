@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const BASE_URL = 'https://abdullah-test.whitescastle.com';
 
@@ -72,10 +73,12 @@ export default function RoomForm({ onRoomAdded }: { onRoomAdded?: () => void }) 
         onSubmit={handleSubmit}
         className="relative z-10 bg-gray-900/80 p-10 rounded-2xl shadow-2xl space-y-5 max-w-lg w-full border border-white/10 backdrop-blur-md"
       >
-        <h2 className="text-3xl font-extrabold text-white text-center mb-6 drop-shadow-lg tracking-wide">
-          ➕ Add New Room
-        </h2>
-
+               <div className=" flex flex-col md:flex-row md:items-center md:justify-between">
+              <h1 className="text-2xl font-bold mb-4">➕Add Screen</h1>
+              <Link href="/Screens" className="mb-6 inline-block  font-bold  text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg transition">
+                &larr; Back to List
+              </Link>
+      </div>
         {/* Name */}
         <div>
           <label className="block text-gray-300 mb-2 font-medium">Room Name</label>
@@ -84,7 +87,7 @@ export default function RoomForm({ onRoomAdded }: { onRoomAdded?: () => void }) 
             placeholder="Enter room name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+            className="w-full p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
           />
         </div>
 
@@ -97,7 +100,7 @@ export default function RoomForm({ onRoomAdded }: { onRoomAdded?: () => void }) 
             placeholder="Enter seating capacity"
             value={seatingCapacity}
             onChange={(e) => setSeatingCapacity(e.target.value)}
-            className="w-full p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+            className="w-full p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
           />
         </div>
 
@@ -111,7 +114,7 @@ export default function RoomForm({ onRoomAdded }: { onRoomAdded?: () => void }) 
               placeholder="Rows"
               value={rows}
               onChange={(e) => setRows(e.target.value)}
-              className="w-1/2 p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+              className="w-1/2 p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
             />
             <input
               type="number"
@@ -119,7 +122,7 @@ export default function RoomForm({ onRoomAdded }: { onRoomAdded?: () => void }) 
               placeholder="Columns"
               value={columns}
               onChange={(e) => setColumns(e.target.value)}
-              className="w-1/2 p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+              className="w-1/2 p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
             />
           </div>
         </div>
@@ -132,7 +135,7 @@ export default function RoomForm({ onRoomAdded }: { onRoomAdded?: () => void }) 
             placeholder="Enter location"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="w-full p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+            className="w-full p-3 rounded-lg bg-gray-800/80 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
           />
         </div>
 
@@ -142,8 +145,8 @@ export default function RoomForm({ onRoomAdded }: { onRoomAdded?: () => void }) 
           disabled={loading}
           className={`w-full py-3 rounded-lg text-white font-bold tracking-wide transition transform shadow-lg cursor-pointer ${
             loading
-              ? 'bg-green-400 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 hover:scale-[1.02]'
+              ? 'bg-blue-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'
           }`}
         >
           {loading ? '⏳ Adding...' : '➕ Add Room'}

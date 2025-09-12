@@ -159,12 +159,12 @@ export default function StartBooking() {
       {/* Content */}
       <div className="relative z-20 p-6 max-w-6xl mx-auto text-white">
         <div className="flex items-center justify-between mb-10">
-          <h1 className="text-3xl font-bold">🎬 Available Showtimes</h1>
+          <h1 className="text-3xl font-bold">🎬 Available Shows</h1>
           <Link
-            href="/add-showtimes"
-            className="px-6 py-3 bg-green-500 text-gray-900 rounded-xl shadow-lg hover:bg-green-600 transition-all font-bold flex items-center gap-2 cursor-pointer"
+            href="/add-shows"
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg transition-all font-bold flex items-center gap-2 cursor-pointer"
           >
-            ➕ Add Showtime
+            ➕Add Shows
           </Link>
         </div>
 
@@ -229,7 +229,7 @@ export default function StartBooking() {
                   onClick={() =>
                     toast.success(`🎟 Booking started for ${st.movie?.title}`)
                   }
-                  className="bg-blue-400 hover:bg-blue-600 px-4 py-2 rounded-lg text-black font-semibold w-full mt-auto cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-semibold w-full mt-auto cursor-pointer"
                 >
                   Start Booking
                 </button>

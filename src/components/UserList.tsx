@@ -4,6 +4,8 @@ import { toast } from "react-toastify";
 import { FaEdit, FaTrash, FaPlus } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import HomeWrapper from "./HomeWrapper";
 
 interface User {
   _id: string;
@@ -117,7 +119,16 @@ export default function UserList() {
     }
   };
 
-  if (loading) return <p className="p-6 text-white">Loading users...</p>;
+ if(loading){
+    return(
+      <HomeWrapper>
+        {/* You can add a loading spinner or message here */}
+        <div className="flex items-center justify-center h[calc(100vh-77px)] bg-black">
+          <span className="text-white text-xl">Loading...</span>
+        </div>
+      </HomeWrapper>
+    );
+  }
 
   return (
     <div
@@ -129,13 +140,13 @@ export default function UserList() {
       <div className="relative z-10 overflow-y-auto scrollbar-y">
         {/* Top Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-white">👥 User List</h1>
-          <button
-            onClick={() => router.push("/users/add-user")}
-            className="flex items-center gap-2 cursor-pointer bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow-md transition"
+          <h1 className="text-3xl font-bold text-white">👥Users List</h1>
+          <Link
+            href="/users/add-user"
+            className="flex items-center gap-2 cursor-pointer  bg-blue-600 hover:bg-blue-700  text-white px-5 py-2 rounded-lg shadow-md transition"
           >
             <FaPlus /> Add User
-          </button>
+          </Link>
         </div>
 
         {/* Table */}
