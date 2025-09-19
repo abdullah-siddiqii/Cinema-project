@@ -29,6 +29,7 @@ const BASE_URL = "https://abdullah-test.whitescastle.com/api";
 
 export default function StartBooking() {
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
+  
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -188,18 +189,37 @@ export default function StartBooking() {
                   >
                     <FaEdit />
                   </button>
-                  <button
-                    onClick={() => handleDelete(st._id)}
-                    disabled={deletingId === st._id}
-                    title="Delete Showtime"
-                    className={`cursor-pointer ${
-                      deletingId === st._id
-                        ? "text-gray-500"
-                        : "text-red-400 hover:text-red-500"
-                    }`}
-                  >
-                    {deletingId === st._id ? "⏳" : <FaTrash />}
-                  </button>
+               <button
+  onClick={async () => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Deleting this showtime will remove all current bookings associated with it!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      background: "black",
+      color: "white",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700",
+        cancelButton: "bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600",
+      },
+    });
+
+    if (result.isConfirmed) {
+      handleDelete(st._id);
+    }
+  }}
+  disabled={deletingId === st._id}
+  title="Delete Showtime"
+  className={`cursor-pointer ${
+    deletingId === st._id ? "text-gray-500" : "text-red-400 hover:text-red-500"
+  }`}
+>
+  {deletingId === st._id ? "⏳" : <FaTrash />}
+</button>
+
                 </div>
 
                 {/* Movie */}
@@ -225,14 +245,11 @@ export default function StartBooking() {
                   ))}
                 </div>
 
-                <button
-                  onClick={() =>
-                    toast.success(`🎟 Booking started for ${st.movie?.title}`)
-                  }
-                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-semibold w-full mt-auto cursor-pointer"
-                >
+                <Link 
+                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-semibold w-full mt-auto cursor-pointer" href={`/Screens/${st._id}`}>
                   Start Booking
-                </button>
+                </Link>
+                
               </div>
             ))}
           </div>

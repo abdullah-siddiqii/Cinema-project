@@ -1,6 +1,5 @@
 // app/add-movies/page.tsx
 'use client';
-
 import Sidebar from '@/components/Sidebar';
 import { ToastContainer } from 'react-toastify';
 import AuthGuard from '@/components/AuthGuard';

@@ -1,10 +1,11 @@
 // app/add-movies/page.tsx
 'use client';
-
 import Sidebar from '@/components/Sidebar';
 import { ToastContainer } from 'react-toastify';
 import AuthGuard from '@/components/AuthGuard';
-import ScreenList from '@/components/ScreenList';
+import RoomList from '@/components/ScreenList';
+import Addscreen from '@/components/Addscreen';
+import Room1 from '@/components/Room1';
 
 
 export default function AddMoviesPage() {
@@ -26,7 +27,7 @@ export default function AddMoviesPage() {
         <Sidebar />
         <main className="flex-1 bg-gray-100 h-[calc(100vh-77px)] ">
           {/* Pass the actual user object to Room component */}
-          <ScreenList/>
+          <Room1/>
         </main>
       </div>
     </AuthGuard>

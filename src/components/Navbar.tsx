@@ -26,8 +26,10 @@ export default function Navbar() {
     localStorage.removeItem("user");
 
     // Redirect after logout
-    router.replace("/login");
-    toast.success("Logout successful");
+    toast.success("Logout successful", { autoClose: 1200 });
+    setTimeout(() => {
+      router.replace("/login");
+    },1500);
   } catch (err) {
     console.error("Logout error:", err);
     toast.error("Logout failed");
