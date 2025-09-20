@@ -350,7 +350,7 @@ export default function BookingPage() {
   />
 )}
 
-{hasDiscount && (discountPrice ?? 0) > 0 && (
+{hasDiscount  && (
   <input
     type="text"
     placeholder="Discount Reference"
