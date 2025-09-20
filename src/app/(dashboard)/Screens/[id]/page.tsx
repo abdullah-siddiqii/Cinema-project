@@ -1,4 +1,4 @@
-// app/add-movies/page.tsx
+// app/movies/add/page.tsx
 'use client';
 import Sidebar from '@/components/Sidebar';
 import { ToastContainer } from 'react-toastify';

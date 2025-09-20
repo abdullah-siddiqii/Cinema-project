@@ -25,8 +25,10 @@ export default function AddShowtime() {
   const [movie, setMovie] = useState("");
   const [room, setRoom] = useState("");
   const [date, setDate] = useState("");
-  const [times, setTimes] = useState<string[]>([""]);
-  const [loading, setLoading] = useState(false); // ✅ new state
+  const [time, setTime] = useState(""); // 👈 single time
+  const [vipPrice, setVipPrice] = useState("");
+  const [normalPrice, setNormalPrice] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const formatTime = (time: string) => {
     if (!time) return "";
@@ -37,10 +39,11 @@ export default function AddShowtime() {
     return `${hours}:${m} ${ampm}`;
   };
 
+  // ✅ Fetch movies & rooms
   useEffect(() => {
     Promise.all([
       fetch(`${BASE_URL}/movies`).then((res) => res.json()),
-      fetch(`${BASE_URL}/rooms`).then((res) => res.json()),
+      fetch(`${BASE_URL}/rooms`).then((res) => res.json())
     ])
       .then(([moviesData, roomsData]) => {
         if (Array.isArray(moviesData)) setMovies(moviesData);
@@ -52,52 +55,57 @@ export default function AddShowtime() {
       .catch(() => toast.error("Failed to load movies or rooms"));
   }, []);
 
-  const handleTimeChange = (index: number, value: string) => {
-    const updated = [...times];
-    updated[index] = value;
-    setTimes(updated);
-  };
-  const addTimeField = () => setTimes([...times, ""]);
-  const removeTimeField = (index: number) =>
-    setTimes(times.filter((_, i) => i !== index));
+  // ✅ Handle form submit
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  if (!movie || !room || !date || !time || !vipPrice || !normalPrice) {
+    toast.error("All fields are required ❌");
+    return;
+  }
 
-    if (!movie || !room || !date || times.some((t) => !t)) {
-      toast.error("All fields are required ❌");
+  try {
+    setLoading(true);
+    const res = await fetch(`${BASE_URL}/showtimes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        movie,
+        room,
+        date,
+        time,
+        ticketPrices: {
+          VIP: Number(vipPrice),
+          Normal: Number(normalPrice),
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      // 👇 yahan showtime duplicate error bhi show hoga
+      toast.error(error.message || "Failed to save showtime ❌");
       return;
     }
 
-    try {
-      setLoading(true); // ✅ start loading
-      const res = await fetch(`${BASE_URL}/showtimes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ movie, room, date, times }),
-      });
+    toast.success("✅ Showtime added successfully");
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to save showtime");
-      }
+    // Reset form
+    setMovie("");
+    setRoom("");
+    setDate("");
+    setTime("");
+    setVipPrice("");
+    setNormalPrice("");
 
-      toast.success("Showtime added successfully");
+    setTimeout(() => router.push("/start-booking"), 1500);
+  } catch (err: any) {
+    toast.error(err.message || "Error saving showtime ❌");
+  } finally {
+    setLoading(false);
+  }
+};
 
-      setMovie("");
-      setRoom("");
-      setDate("");
-      setTimes([""]);
-
-      setTimeout(() => {
-        router.push("/start-booking");
-      }, 1500);
-    } catch (err: any) {
-      toast.error(err.message || "Error saving showtime");
-    } finally {
-      setLoading(false); // ✅ stop loading
-    }
-  };
 
   return (
     <div className="w-full min-h-[calc(100vh-79px)] relative">
@@ -108,12 +116,16 @@ export default function AddShowtime() {
       <div className="absolute inset-0 bg-black/70" />
 
       <div className="relative z-10 p-6 text-white max-w-3xl mx-auto">
-        <div className=" flex flex-col md:flex-row md:items-center md:justify-between">
-        <h1 className="text-3xl font-bold mb-4">➕Add Shows</h1>
-        <Link href="/start-booking" className="mb-6 inline-block text-white font-bold bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
-          &larr; Back to List
-        </Link>
-</div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <h1 className="text-3xl font-bold mb-4">➕ Add Shows</h1>
+          <Link
+            href="/start-booking"
+            className="mb-6 inline-block text-white font-bold bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition"
+          >
+            &larr; Back to List
+          </Link>
+        </div>
+
         <form
           onSubmit={handleSubmit}
           className="bg-gray-800/90 p-4 rounded-lg shadow-md space-y-4"
@@ -151,60 +163,58 @@ export default function AddShowtime() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full p-2 rounded bg-gray-700 text-white "
+            className="w-full p-2 rounded bg-gray-700 text-white"
           />
 
-          {/* Times */}
+          {/* Ticket Prices */}
+          <div className="flex gap-4">
+            <input
+              type="number"
+              placeholder="VIP Price"
+              value={vipPrice}
+              onChange={(e) => setVipPrice(e.target.value)}
+              className="flex-1 p-2 rounded bg-gray-700 text-white"
+              required
+              min={0}
+            />
+            <input
+              type="number"
+              placeholder="Normal Price"
+              value={normalPrice}
+              onChange={(e) => setNormalPrice(e.target.value)}
+              className="flex-1 p-2 rounded bg-gray-700 text-white"
+              required
+              min={0}
+            />
+          </div>
+
+          {/* Single Time */}
           <div>
-            <p className="mb-2">Show Times</p>
-            {times.map((t, index) => {
-              const formatted = formatTime(t);
-              return (
-                <div key={index} className="flex items-center gap-2 mb-2">
-                  <input
-                    type="time"
-                    value={t}
-                    onChange={(e) => handleTimeChange(index, e.target.value)}
-                    className="flex-1 p-2 rounded bg-gray-700 text-white"
-                    required
-                  />
-                  {t && (
-                    <span className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm">
-                      ⏰ {formatted}
-                    </span>
-                  )}
-                  {times.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeTimeField(index)}
-                      className="px-3 py-1 bg-red-600 rounded cursor-pointer"
-                    >
-                      -
-                    </button>
-                  )}
-                  {index === times.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={addTimeField}
-                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded cursor-pointer font-bold"
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+            <p className="mb-2">Show Time</p>
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="flex-1 p-2 rounded bg-gray-700 text-white"
+                required
+              />
+              {time && (
+                <span className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm">
+                  ⏰ {formatTime(time)}
+                </span>
+              )}
+            </div>
           </div>
 
           <button
             type="submit"
-            disabled={loading} // ✅ disable button
-            className={`px-4 py-2 rounded-lg text-white cursor-pointer w-full transition 
-              ${
-                loading
-                  ? "bg-gray-500 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 font-bold"
-              }`}
+            disabled={loading}
+            className={`px-4 py-2 rounded-lg text-white cursor-pointer w-full transition ${
+              loading
+                ? "bg-gray-500 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 font-bold"
+            }`}
           >
             {loading ? "⏳ Adding..." : "Add Showtime"}
           </button>

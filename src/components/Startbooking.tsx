@@ -22,25 +22,27 @@ interface Showtime {
   movie: Movie;
   room: Room;
   date: string;
-  times: string[];
+  time: string[]; // ✅ always array
+  vipTicketPrice?: number;
+  normalTicketPrice?: number;
 }
 
 const BASE_URL = "https://abdullah-test.whitescastle.com/api";
 
 export default function StartBooking() {
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
-  
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [editShow, setEditShow] = useState<Showtime | null>(null);
   const [newDate, setNewDate] = useState("");
-  const [newTimes, setNewTimes] = useState<string[]>([""]);
+  const [newTimes, setNewTimes] = useState<string[]>([]);
   const [selectedMovieId, setSelectedMovieId] = useState("");
 
-  const [updating, setUpdating] = useState(false); // ✅ for edit save
-  const [deletingId, setDeletingId] = useState<string | null>(null); // ✅ for delete
+  const [updating, setUpdating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // ✅ format time
   const formatTime = (time: string) => {
     if (!time) return "";
     const [h, m] = time.split(":");
@@ -50,6 +52,7 @@ export default function StartBooking() {
     return `${hours}:${m} ${ampm}`;
   };
 
+  // ✅ Fetch showtimes + movies
   const fetchShowtimes = async () => {
     try {
       const [resShowtimes, resMovies] = await Promise.all([
@@ -64,13 +67,17 @@ export default function StartBooking() {
 
       setMovies(movieData);
 
-      const showtimesWithMovies = showtimeData.map((st: any) => ({
+      // normalize showtimes
+      const showtimesWithMovies: Showtime[] = showtimeData.map((st: any) => ({
         ...st,
         movie:
           movieData.find((m: Movie) => m._id === st.movie?._id) || {
             title: "Unknown",
             _id: "",
           },
+        time: Array.isArray(st.time) ? st.time : st.time ? [st.time] : [], // ✅ always array
+        vipTicketPrice: st.ticketPrices?.VIP ?? 500,
+        normalTicketPrice: st.ticketPrices?.Normal ?? 300,
       }));
 
       setShowtimes(showtimesWithMovies);
@@ -87,39 +94,26 @@ export default function StartBooking() {
 
   // ✅ Delete showtime
   const handleDelete = async (id: string) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "This will permanently delete the showtime!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete it!",
-      background: "black",
-      color: "white",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          setDeletingId(id); // ✅ show deleting
-          const res = await fetch(`${BASE_URL}/showtimes/${id}`, {
-            method: "DELETE",
-          });
-          if (!res.ok) throw new Error("Failed");
-          toast.success("Showtime deleted successfully");
-          fetchShowtimes();
-        } catch {
-          toast.error("❌ Error deleting showtime");
-        } finally {
-          setDeletingId(null);
-        }
-      }
-    });
+    try {
+      setDeletingId(id);
+      const res = await fetch(`${BASE_URL}/showtimes/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast.success("Showtime deleted successfully");
+      fetchShowtimes();
+    } catch {
+      toast.error("❌ Error deleting showtime");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
+  // ✅ Edit modal open
   const handleEdit = (st: Showtime) => {
     setEditShow(st);
     setNewDate(st.date ? st.date.split("T")[0] : "");
-    setNewTimes(st.times);
+    setNewTimes(st.time || []);
     setSelectedMovieId(st.movie?._id || "");
   };
 
@@ -127,14 +121,16 @@ export default function StartBooking() {
   const handleUpdate = async () => {
     if (!editShow) return;
     try {
-      setUpdating(true); // ✅ show saving
+      setUpdating(true);
       const res = await fetch(`${BASE_URL}/showtimes/${editShow._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           movie: selectedMovieId,
           date: newDate,
-          times: newTimes,
+          times: newTimes, // ✅ array
+          vipTicketPrice: editShow.vipTicketPrice,
+          normalTicketPrice: editShow.normalTicketPrice,
         }),
       });
       if (!res.ok) throw new Error("Failed");
@@ -162,7 +158,7 @@ export default function StartBooking() {
         <div className="flex items-center justify-between mb-10">
           <h1 className="text-3xl font-bold">🎬 Available Shows</h1>
           <Link
-            href="/add-shows"
+            href="/start-booking/shows-add"
             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg transition-all font-bold flex items-center gap-2 cursor-pointer"
           >
             ➕Add Shows
@@ -178,7 +174,7 @@ export default function StartBooking() {
             {showtimes.map((st) => (
               <div
                 key={st._id}
-                className="relative bg-gray-900 rounded-xl p-5 shadow-lg border border-gray-700 flex flex-col z-10"
+                className="relative bg-gray-900 rounded-xl p-5 shadow-lg border border-gray-700 flex flex-col justify-between h-full z-10"
               >
                 {/* Edit/Delete */}
                 <div className="absolute top-3 right-3 flex gap-2">
@@ -189,37 +185,40 @@ export default function StartBooking() {
                   >
                     <FaEdit />
                   </button>
-               <button
-  onClick={async () => {
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "Deleting this showtime will remove all current bookings associated with it!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-      background: "black",
-      color: "white",
-      buttonsStyling: false,
-      customClass: {
-        confirmButton: "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700",
-        cancelButton: "bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600",
-      },
-    });
+                  <button
+                    onClick={async () => {
+                      const result = await Swal.fire({
+                        title: "Are you sure?",
+                        text: "Deleting this showtime will remove all current bookings associated with it!",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText: "Yes, delete it!",
+                        cancelButtonText: "Cancel",
+                        background: "black",
+                        color: "white",
+                        buttonsStyling: false,
+                        customClass: {
+                          confirmButton:
+                            "bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 mr-3",
+                          cancelButton:
+                            "bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 ml-3",
+                        },
+                      });
 
-    if (result.isConfirmed) {
-      handleDelete(st._id);
-    }
-  }}
-  disabled={deletingId === st._id}
-  title="Delete Showtime"
-  className={`cursor-pointer ${
-    deletingId === st._id ? "text-gray-500" : "text-red-400 hover:text-red-500"
-  }`}
->
-  {deletingId === st._id ? "⏳" : <FaTrash />}
-</button>
-
+                      if (result.isConfirmed) {
+                        handleDelete(st._id);
+                      }
+                    }}
+                    disabled={deletingId === st._id}
+                    title="Delete Showtime"
+                    className={`cursor-pointer ${
+                      deletingId === st._id
+                        ? "text-gray-500"
+                        : "text-red-400 hover:text-red-500"
+                    }`}
+                  >
+                    {deletingId === st._id ? "⏳" : <FaTrash />}
+                  </button>
                 </div>
 
                 {/* Movie */}
@@ -235,7 +234,7 @@ export default function StartBooking() {
                 </p>
 
                 <div className="flex flex-wrap justify-center gap-2 mb-4">
-                  {st.times.map((t, i) => (
+                  {st.time.map((t, i) => (
                     <span
                       key={i}
                       className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm"
@@ -245,11 +244,17 @@ export default function StartBooking() {
                   ))}
                 </div>
 
-                <Link 
-                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-semibold w-full mt-auto cursor-pointer" href={`/Screens/${st._id}`}>
+                <div className="flex flex-col gap-1 text-center text-sm text-gray-300 mb-3">
+                  <span>💎 VIP: Rs {st.vipTicketPrice || "N/A"}</span>
+                  <span>🎟️ Normal: Rs {st.normalTicketPrice || "N/A"}</span>
+                </div>
+
+                <Link
+                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-semibold w-full mt-auto cursor-pointer"
+                  href={`/Screens/${st._id}`}
+                >
                   Start Booking
                 </Link>
-                
               </div>
             ))}
           </div>
@@ -281,6 +286,32 @@ export default function StartBooking() {
               type="date"
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
+              className="w-full p-2 rounded bg-gray-800 text-white mb-4"
+            />
+
+            <label className="block mb-2">VIP Ticket Price</label>
+            <input
+              type="number"
+              value={editShow.vipTicketPrice || ""}
+              onChange={(e) =>
+                setEditShow((prev) =>
+                  prev ? { ...prev, vipTicketPrice: Number(e.target.value) } : prev
+                )
+              }
+              className="w-full p-2 rounded bg-gray-800 text-white mb-4"
+            />
+
+            <label className="block mb-2">Normal Ticket Price</label>
+            <input
+              type="number"
+              value={editShow.normalTicketPrice || ""}
+              onChange={(e) =>
+                setEditShow((prev) =>
+                  prev
+                    ? { ...prev, normalTicketPrice: Number(e.target.value) }
+                    : prev
+                )
+              }
               className="w-full p-2 rounded bg-gray-800 text-white mb-4"
             />
 

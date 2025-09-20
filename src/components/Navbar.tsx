@@ -61,7 +61,7 @@ export default function Navbar() {
       {/* Mobile Dropdown */}
       {isOpen && (
         <div className="md:hidden bg-gray-800 px-4 py-3 space-y-3">
-          <Link href="/add-movies" className="block hover:text-yellow-400">
+          <Link href="/movies/add" className="block hover:text-yellow-400">
             Add Movies
           </Link>
           <Link href="/running-movies" className="block hover:text-yellow-400">

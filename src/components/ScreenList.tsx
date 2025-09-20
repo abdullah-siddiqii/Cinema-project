@@ -224,7 +224,7 @@ export default function ScreenList() {
         {/* Header */}
         <div className="flex justify-between items-center mb-10">
           <h2 className="text-3xl font-bold text-white drop-shadow-md">🎬 Screens List</h2>
-          <Link href="/Screens/add-screens"
+          <Link href="/Screens/add"
             className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg transition font-bold">
             <FaPlus /> Add Screens
           </Link>

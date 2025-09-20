@@ -149,7 +149,7 @@ const handleDelete = async (id: string) => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-white">👥Users List</h1>
           <Link
-            href="/users/add-user"
+            href="/users/add"
             className="flex items-center gap-2 cursor-pointer  bg-blue-600 hover:bg-blue-700  text-white px-5 py-2 rounded-lg shadow-md transition"
           >
             <FaPlus /> Add User

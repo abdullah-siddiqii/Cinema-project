@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -9,60 +9,69 @@ import HomeWrapper from '@/components/HomeWrapper';
 
 export default function LoginPage() {
   const router = useRouter();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ✅ Redirect if already logged in
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      router.replace('/home');
-    }
-  }, [router]);
-
   // 🔹 Handle login
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
 
-    try {
-      const res = await fetch('https://abdullah-test.whitescastle.com/api/auth/login', {
+  try {
+    const res = await fetch(
+      'https://abdullah-test.whitescastle.com/api/auth/login',
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.token && data.user) {
-        // Save token + user
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-
-        toast.success('Login successful ✅', { autoClose: 1500 });
-
-        // Wait a bit to let toast show
-        setTimeout(() => {
-          router.replace('/home');
-        }, 2000); // 500ms delay for toast
-      } else {
-        const msg = data.message || 'Incorrect email or password';
-        toast.error(msg);
-        setError(msg);
       }
-    } catch (err) {
-      console.error(err);
-      toast.error('Internal server error');
-      setError('Internal server error');
-    } finally {
-      setLoading(false);
+    );
+
+    const data = await res.json();
+    console.log("🔍 Login API response:", data);
+
+    if (res.ok && data.token && data.user) {
+      // ✅ Save token + user in localStorage
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      toast.success('Login successful ✅', { autoClose: 1500 });
+
+      setTimeout(() => {
+        if (data.user.role === 'admin') {
+          router.replace('/home');
+        } else {
+          router.replace('/home');
+        }
+      }, 1000);
+    } else {
+      toast.error(data.message || 'Incorrect email or password');
+      setError(data.message || 'Incorrect email or password');
     }
-  };
+  } catch (err) {
+    console.error("❌ Login Error:", err);
+    toast.error('Internal server error');
+    setError('Internal server error');
+  } finally {
+    setLoading(false); // ✅ Always stop loading
+  }
+};
+
+
+  // 🔹 Loader screen
+  if (loading) {
+    return (
+      <HomeWrapper>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-yellow-400"></div>
+        </div>
+      </HomeWrapper>
+    );
+  }
 
   return (
     <HomeWrapper>
@@ -70,11 +79,15 @@ export default function LoginPage() {
         className="min-h-screen w-full bg-cover bg-center flex items-center justify-center px-4"
         style={{ backgroundImage: "url('/images/login.jpg')" }}
       >
-        <div className="w-full max-w-md bg-black/50 border border-white/10 rounded-3xl p-10 shadow-xl">
-          <h2 className="text-3xl font-bold text-white mb-6 text-center">Login</h2>
+        <div className="w-full max-w-md bg-black/40 border border-white/10 rounded-3xl p-10 shadow-xl">
+          <h2 className="text-3xl font-bold text-white mb-6 text-center">
+            Login here
+          </h2>
 
           {/* Error Message */}
-          {error && <div className="text-red-500 text-sm mb-4 text-center">{error}</div>}
+          {error && (
+            <div className="text-red-500 text-sm mb-4 text-center">{error}</div>
+          )}
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-5">
@@ -121,9 +134,15 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg flex items-center justify-center gap-2 cursor-pointer"
             >
-              {loading ? 'Logging in...' : <>Login <ArrowRight size={18} /></>}
+              {loading ? (
+                'Loading...'
+              ) : (
+                <>
+                  Login <ArrowRight size={18} />
+                </>
+              )}
             </button>
           </form>
         </div>

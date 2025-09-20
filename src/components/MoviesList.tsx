@@ -121,7 +121,7 @@ export default function MoviesList() {
             🎬 Now Showing
           </h1>
           <Link
-            href="/add-movies"
+            href="/movies/add"
             className="px-6 py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg  transition-all duration-300 font-bold flex items-center gap-2"
           >
             ➕ Add Movie

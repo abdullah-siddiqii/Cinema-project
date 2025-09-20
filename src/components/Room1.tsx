@@ -16,12 +16,12 @@ interface Seat {
   row: number;
   column: number;
   type?: 'VIP' | 'Normal' | 'Disabled';
-  bookingId?: string | null;
 }
 
 interface SeatWithBooking extends Seat {
   isBooked: boolean;
   isAvailable: boolean;
+  bookingId?: string;
 }
 
 interface Room {
@@ -35,17 +35,22 @@ interface Movie {
   title: string;
 }
 
+interface TicketPrices {
+  VIP: number;
+  Normal: number;
+}
+
 interface Showtime {
   _id: string;
   movie: Movie;
   room: Room;
   date: string;
   time: string;
-  ticketPrice: number;
+  ticketPrices: TicketPrices;
   seats: SeatWithBooking[];
 }
 
-/* -------------------- Booking Page Component -------------------- */
+/* -------------------- Booking Page -------------------- */
 export default function BookingPage() {
   const { id } = useParams();
   const BASE_URL = 'https://abdullah-test.whitescastle.com';
@@ -53,9 +58,16 @@ export default function BookingPage() {
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [discountPrice, setDiscountPrice] = useState<number | null>(null);
+  const [discountReference, setDiscountReference] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'JazzCash/EasyPaisa' | 'Bank'>('Cash');
+  const [transactionId, setTransactionId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [hasDiscount, setHasDiscount] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [bankName, setBankName] = useState<'HBL' | 'Allied' | 'UBL' | 'Meezan'>('HBL');
 
   /* -------------------- Fetch Showtime & Booked Seats -------------------- */
   const fetchShowtime = async () => {
@@ -66,8 +78,10 @@ export default function BookingPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to fetch showtime');
 
+      // Seats in the room
       const roomSeats: Seat[] = Array.isArray(data.room.seats) ? data.room.seats : [];
 
+      // Fetch booked seats
       const bookedRes = await fetch(`${BASE_URL}/api/showtimes/${id}/booked-seats`);
       const bookedData = await bookedRes.json();
       if (!bookedRes.ok) throw new Error(bookedData.message || 'Failed to fetch booked seats');
@@ -75,12 +89,13 @@ export default function BookingPage() {
       const bookings: { _id: string; seat: string }[] =
         bookedData.bookings?.map((b: any) => ({ _id: String(b._id), seat: String(b.seat) })) || [];
 
+      // Map seats with booking status
       const seats: SeatWithBooking[] = roomSeats.map((seat) => {
         const booking = bookings.find((b) => b.seat === seat._id);
         return {
           ...seat,
           isBooked: !!booking,
-          isAvailable: !booking,
+          isAvailable: !booking && seat.type !== 'Disabled',
           bookingId: booking ? booking._id : undefined,
         };
       });
@@ -91,7 +106,7 @@ export default function BookingPage() {
         room: { ...data.room, seats },
         date: new Date(data.date).toLocaleDateString(),
         time: data.times?.[0] || 'N/A',
-        ticketPrice: 0,
+        ticketPrices: data.ticketPrices || { VIP: 700, Normal: 400 },
         seats,
       });
     } catch (err: any) {
@@ -116,21 +131,34 @@ export default function BookingPage() {
     );
   };
 
-  /* -------------------- Confirm Booking -------------------- */
   const handleBooking = async () => {
     if (!customerName || !customerPhone || !selectedSeats.length) {
       toast.error('Please fill all details and select seats');
+      return;
+    }
+    if (discountPrice && discountPrice > 0 && !discountReference) {
+      toast.error('Discount reference is required when discount is applied');
+      return;
+    }
+    if (paymentMethod !== 'Cash' && !transactionId) {
+      toast.error('Transaction ID is required for non-cash payments');
+      return;
+    }
+    if (paymentMethod === 'Bank' && !bankName.trim()) {
+      toast.error('Bank name is required for Bank payments');
       return;
     }
     if (!showtime) return;
 
     setBookingLoading(true);
     try {
-      const totalPrice = selectedSeats.reduce((sum, seatNum) => {
+      const ticketPrice = selectedSeats.reduce((sum, seatNum) => {
         const seat = showtime.seats.find((s) => s.seatNumber === seatNum);
         if (!seat) return sum;
-        return sum + (seat.type === 'VIP' ? 700 : 400);
+        return sum + (seat.type === 'VIP' ? showtime.ticketPrices.VIP : showtime.ticketPrices.Normal);
       }, 0);
+
+      const totalPrice = ticketPrice - (discountPrice || 0);
 
       const res = await fetch(`${BASE_URL}/api/bookings`, {
         method: 'POST',
@@ -141,7 +169,13 @@ export default function BookingPage() {
           seat: selectedSeats,
           customerName,
           customerPhone,
-          ticketPrice: totalPrice,
+          ticketPrice,
+          discountPrice,
+          discountReference,
+          paymentMethod,
+          transactionId,
+          bankName,
+          totalPrice,
         }),
       });
 
@@ -149,25 +183,31 @@ export default function BookingPage() {
       if (!res.ok) throw new Error(data.message || 'Booking failed');
 
       toast.success('Booking confirmed!');
-      const seatBookingMap: Record<string, string> = {};
-      selectedSeats.forEach((seatNum, i) => (seatBookingMap[seatNum] = data.bookingIds[i]));
 
-      setShowtime((prev) =>
-        prev
-          ? {
-              ...prev,
-              seats: prev.seats.map((seat) =>
-                selectedSeats.includes(seat.seatNumber)
-                  ? { ...seat, isBooked: true, isAvailable: false, bookingId: seatBookingMap[seat.seatNumber] }
-                  : seat
-              ),
-            }
-          : prev
-      );
+      // Update local seats state to mark them as booked
+      const updatedSeats = showtime.seats.map((seat) => {
+        if (selectedSeats.includes(seat.seatNumber)) {
+          return {
+            ...seat,
+            isBooked: true,
+            isAvailable: false,
+            bookingId: data.bookingIds?.[seat.seatNumber] || undefined, // if API returns bookingId
+          };
+        }
+        return seat;
+      });
 
-      setSelectedSeats([]);
+      setShowtime({ ...showtime, seats: updatedSeats, room: { ...showtime.room, seats: updatedSeats } });
+
+      // Reset form fields
       setCustomerName('');
       setCustomerPhone('');
+      setDiscountPrice(null);
+      setDiscountReference('');
+      setTransactionId('');
+      setPaymentMethod('Cash');
+      setBankName('HBL');
+      setSelectedSeats([]);
     } catch (err: any) {
       toast.error(err.message || 'Booking failed');
     } finally {
@@ -180,13 +220,45 @@ export default function BookingPage() {
     try {
       const res = await fetch(`${BASE_URL}/api/bookings/cancel/${bookingId}`, { method: 'DELETE' });
       const data = await res.json();
-      if (res.ok) toast.success(`Booking cancelled for seat ${seatNumber}`);
-      else toast.error(data.message || 'Failed to cancel booking');
-      fetchShowtime();
+
+      if (!res.ok) {
+        toast.error(data.message || 'Failed to cancel booking');
+        return;
+      }
+
+      toast.success(`Booking cancelled for seat ${seatNumber}`);
+
+      // Update local state without refreshing
+      if (showtime) {
+        const updatedSeats = showtime.seats.map((seat) => {
+          if (seat._id === seatNumber || seat.bookingId === bookingId) {
+            return {
+              ...seat,
+              isBooked: false,
+              isAvailable: seat.type !== 'Disabled',
+              bookingId: undefined,
+            };
+          }
+          return seat;
+        });
+
+        setShowtime({
+          ...showtime,
+          room: {
+            ...showtime.room,
+            seats: updatedSeats,
+          },
+          seats: updatedSeats,
+        });
+
+        // Also remove from selectedSeats if it was selected
+        setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
+      }
     } catch {
       toast.error('Server error while cancelling booking');
     }
   };
+
 
   /* -------------------- UI States -------------------- */
   if (loading)
@@ -212,6 +284,12 @@ export default function BookingPage() {
 
   const rows = Math.max(...showtime.seats.map((s) => s.row), 0);
   const cols = Math.max(...showtime.seats.map((s) => s.column), 0);
+
+  const ticketPrice = selectedSeats.reduce((sum, s) => {
+    const seat = showtime.seats.find((seat) => seat.seatNumber === s);
+    return sum + (seat?.type === 'VIP' ? showtime.ticketPrices.VIP : showtime.ticketPrices.Normal);
+  }, 0);
+  const totalPrice = ticketPrice - (discountPrice || 0);
 
   /* -------------------- Render -------------------- */
   return (
@@ -240,26 +318,85 @@ export default function BookingPage() {
             <section className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FaUser className="text-blue-400" /> Customer Details</h2>
               <div className="flex flex-col gap-4">
-                <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone Number"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="w-full p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-blue-500"
+                />
+                <label className="flex items-center gap-2">
+  <input
+    type="checkbox"
+    checked={hasDiscount}
+    onChange={(e) => setHasDiscount(e.target.checked)}
+    className="w-4 h-4"
+  />Discount
+</label>
+{hasDiscount && (
+  <input
+    type="number"
+    placeholder="Discount Price (Rs)"
+    value={discountPrice ?? ''}
+    onChange={(e) => setDiscountPrice(e.target.value ? Number(e.target.value) : null)}
+    className="w-full p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-yellow-500 mt-2"
+  />
+)}
+
+{hasDiscount && (discountPrice ?? 0) > 0 && (
+  <input
+    type="text"
+    placeholder="Discount Reference"
+    value={discountReference}
+    onChange={(e) => setDiscountReference(e.target.value)}
+    className="w-full p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-yellow-500 mt-2"
+  />
+)}
+
+                {/* Payment Method Select */}
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'JazzCash/EasyPaisa' | 'Bank')}
+                  className="w-full p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="JazzCash/EasyPaisa">JazzCash/EasyPaisa</option>
+                  <option value="Bank">Bank</option>
+                </select>
+
+                {/* Bank Name Select – only shows if Bank is selected */}
+                {paymentMethod === 'Bank' && (
+                  <select
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value as 'HBL' | 'Allied' | 'UBL' | 'Meezan')}
+                    className="w-full p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-green-500 mt-2"
+                  >
+                    <option value="HBL">HBL</option>
+                    <option value="Allied">Allied</option>
+                    <option value="UBL">UBL</option>
+                    <option value="Meezan">Meezan</option>
+                  </select>
+                )}
+
+
+
+                {paymentMethod !== 'Cash' && (
                   <input
                     type="text"
-                    placeholder="Full Name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full p-4 pl-12 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-blue-500"
+                    placeholder="Transaction ID"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    className="w-full p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-green-500"
                   />
-                  <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                </div>
-                <div className="relative">
-                  <input
-                    type="tel"
-                    placeholder="Phone Number"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full p-4 pl-12 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <FaPhoneAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                </div>
+                )}
+
               </div>
             </section>
 
@@ -269,10 +406,13 @@ export default function BookingPage() {
               <ul className="text-gray-400 space-y-2 mb-6">
                 <li className="flex justify-between"><span>Seats:</span> <span>{selectedSeats.join(', ') || 'None'}</span></li>
                 <li className="flex justify-between"><span>Tickets:</span> <span>{selectedSeats.length}</span></li>
-                <li className="flex justify-between font-bold text-yellow-300 border-t border-gray-700 pt-2"><span>Total:</span> <span>Rs. {selectedSeats.reduce((sum, s) => {
-                  const seat = showtime.seats.find((seat) => seat.seatNumber === s);
-                  return sum + (seat?.type === 'VIP' ? 700 : 400);
-                }, 0)}</span></li>
+                <li className="flex justify-between"><span>Ticket Price:</span> <span>Rs. {ticketPrice}</span></li>
+                {(discountPrice ?? 0) > 0 && (
+                  <li className="flex justify-between text-green-400"><span>Discount:</span> <span>- Rs. {discountPrice}</span></li>
+                )}
+                <li className="flex justify-between font-bold text-yellow-300 border-t border-gray-700 pt-2">
+                  <span>Total:</span> <span>Rs. {totalPrice}</span>
+                </li>
               </ul>
               <button
                 onClick={handleBooking}
@@ -301,6 +441,7 @@ export default function BookingPage() {
                     Array.from({ length: cols }).map((_, c) => {
                       const seat = showtime.seats.find((s) => s.row === r + 1 && s.column === c + 1);
                       if (!seat) return <div key={`${r}-${c}`} />;
+
                       let className = seat.type === 'VIP' ? 'bg-violet-600' : 'bg-green-600';
                       if (seat.type === 'Disabled') className = 'bg-gray-500 cursor-not-allowed';
                       if (seat.isBooked) className = 'bg-red-600 opacity-80 cursor-pointer';
@@ -319,9 +460,7 @@ export default function BookingPage() {
                             background: 'black',
                             color: 'white',
                           }).then((res) => {
-                            if (res.isConfirmed) {
-                              cancelBooking(seat.seatNumber, seat.bookingId!);
-                            }
+                            if (res.isConfirmed) cancelBooking(seat.seatNumber, seat.bookingId!);
                           });
                           return;
                         }
@@ -337,6 +476,18 @@ export default function BookingPage() {
                   )}
                 </div>
               </div>
+              {/* Ticket Prices Section */}
+              <div className="mt-6 flex flex-col gap-2 text-gray-300 text-sm">
+                <div className="flex justify-between bg-gray-800 px-4 py-2 rounded-lg">
+                  <span>🎟️ VIP Ticket Price:</span>
+                  <span className="font-semibold text-violet-400">Rs. {showtime.ticketPrices.VIP}</span>
+                </div>
+                <div className="flex justify-between bg-gray-800 px-4 py-2 rounded-lg">
+                  <span>🎟️ Normal Ticket Price:</span>
+                  <span className="font-semibold text-green-400">Rs. {showtime.ticketPrices.Normal}</span>
+                </div>
+              </div>
+
 
               {/* Legend */}
               <div className="flex flex-wrap gap-6 mt-8 text-sm justify-center text-gray-400">
