@@ -145,7 +145,7 @@ export default function StartBooking() {
   };
 
   return (
-    <div className="w-full h-[calc(100vh-79px)] relative overflow-y-auto">
+    <div className="min-w-full h-[calc(100vh-79px)] relative overflow-y-auto">
       {/* Background */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"

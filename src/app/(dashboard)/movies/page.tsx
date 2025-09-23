@@ -10,7 +10,7 @@ export default function AddMoviesPage() {
   return (
     <AuthGuard>
       <HomeWrapper>
-      <div className="flex h-[calc(100vh-177px)] ">
+      <div className="flex h-[calc(100vh-79px)] ">
         <ToastContainer
   position="top-center"
   autoClose={1000}
@@ -22,7 +22,7 @@ export default function AddMoviesPage() {
   theme="dark"
 />
   <Sidebar />
-<main className="flex-1 bg-gray-100 h-[calc(100vh-78px)] scrollbar-y">
+<main className="flex-1 bg-gray-100 h-[calc(100vh-79px)] scrollbar-y">
   <MoviesList />
 </main>
 </div>

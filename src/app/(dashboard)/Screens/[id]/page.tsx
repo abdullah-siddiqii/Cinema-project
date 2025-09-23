@@ -25,7 +25,7 @@ export default function AddMoviesPage() {
           theme="dark"
         />
         <Sidebar />
-        <main className="flex-1 bg-gray-100 h-[calc(100vh-77px)] ">
+        <main className="flex-1 bg-gray-100 h-[calc(100vh-79px)] ">
           {/* Pass the actual user object to Room component */}
           <Room1/>
         </main>
