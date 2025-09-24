@@ -52,7 +52,8 @@ export default function Sidebar() {
       <motion.aside
         animate={{ x: sidebarVisible ? 0 : -300 }}
         transition={{ duration: 0.3 }}
-        className="fixed md:static top-0 left-0 h-[calc(100vh-77px)] w-64 bg-neutral-950 text-white p-4 shadow-lg flex flex-col z-50"
+        className="fixed md:static top-0 left-0 h-[calc(100vh-77px)] w-64 bg-black/50 text-white p-4 shadow-lg flex flex-col z-50"
+
       >
         {/* Title */}
         <h1 className="hidden md:block text-xl font-bold mb-6">Cinema Admin</h1>
