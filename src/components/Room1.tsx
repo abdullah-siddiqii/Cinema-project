@@ -104,7 +104,7 @@ export default function BookingPage() {
         movie: { _id: data.movie._id, title: data.movie.title },
         room: { ...data.room, seats },
         date: new Date(data.date).toLocaleDateString(),
-        time: data.times?.[0] || 'N/A',
+       time: new Date(data.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
         ticketPrices: data.ticketPrices || { VIP: 700, Normal: 400 },
         seats,
       });

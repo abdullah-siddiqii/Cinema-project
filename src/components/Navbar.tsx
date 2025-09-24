@@ -40,9 +40,9 @@ export default function Navbar() {
   return (
     <header className="w-full bg-neutral-950 text-white shadow-md h-19 sticky top-0 z-50 border-b border-gray-800">
       <div className="max-w-8xl px-5 py-4 flex justify-between items-center">
-        <Link href="/" className="text-2xl font-bold tracking-wide text-white">
-          🎬 Nagina Cineplex 4K-3D
-        </Link>
+        <div className="text-2xl font-bold tracking-wide text-white">
+          🎬 Siddiqui Cineplex 4K/3D
+        </div>
 
         {/* Desktop Logout Button */}
         <button

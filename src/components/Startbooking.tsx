@@ -262,97 +262,137 @@ export default function StartBooking() {
       </div>
 
       {/* Edit Modal */}
-      {editShow && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-6 rounded-xl shadow-lg w-[400px]">
-            <h2 className="text-xl font-semibold mb-4">Edit Showtime</h2>
+    // Edit Modal + Update logic (inside your StartBooking component)
 
-            <label className="block mb-2">Movie</label>
-            <select
-              value={selectedMovieId}
-              onChange={(e) => setSelectedMovieId(e.target.value)}
-              className="w-full p-2 rounded bg-gray-800 text-white mb-4"
-            >
-              <option value="">-- Select a Movie --</option>
-              {movies.map((m) => (
-                <option key={m._id} value={m._id}>
-                  {m.title}
-                </option>
-              ))}
-            </select>
+{/* -------------------- Edit Modal -------------------- */}
+{editShow && (
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="bg-gray-900 p-6 rounded-xl shadow-lg w-[400px]">
+      <h2 className="text-xl font-semibold mb-4">Edit Showtime</h2>
 
-            <label className="block mb-2">Date</label>
-            <input
-              type="date"
-              value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
-              className="w-full p-2 rounded bg-gray-800 text-white mb-4"
-            />
+      {/* Movie */}
+      <label className="block mb-2">Movie</label>
+      <select
+        value={selectedMovieId}
+        onChange={(e) => setSelectedMovieId(e.target.value)}
+        className="w-full p-2 rounded bg-gray-800 text-white mb-4"
+      >
+        <option value="">-- Select a Movie --</option>
+        {movies.map((m) => (
+          <option key={m._id} value={m._id}>
+            {m.title}
+          </option>
+        ))}
+      </select>
 
-            <label className="block mb-2">VIP Ticket Price</label>
-            <input
-              type="number"
-              value={editShow.vipTicketPrice || ""}
-              onChange={(e) =>
-                setEditShow((prev) =>
-                  prev ? { ...prev, vipTicketPrice: Number(e.target.value) } : prev
-                )
-              }
-              className="w-full p-2 rounded bg-gray-800 text-white mb-4"
-            />
+      {/* Date */}
+      <label className="block mb-2">Date</label>
+      <input
+        type="date"
+        value={newDate}
+        onChange={(e) => setNewDate(e.target.value)}
+        className="w-full p-2 rounded bg-gray-800 text-white mb-4"
+      />
 
-            <label className="block mb-2">Normal Ticket Price</label>
-            <input
-              type="number"
-              value={editShow.normalTicketPrice || ""}
-              onChange={(e) =>
-                setEditShow((prev) =>
-                  prev
-                    ? { ...prev, normalTicketPrice: Number(e.target.value) }
-                    : prev
-                )
-              }
-              className="w-full p-2 rounded bg-gray-800 text-white mb-4"
-            />
+      {/* VIP Ticket Price */}
+      <label className="block mb-2">VIP Ticket Price</label>
+      <input
+        type="number"
+        value={editShow.vipTicketPrice || 0}
+        onChange={(e) =>
+          setEditShow((prev) =>
+            prev ? { ...prev, vipTicketPrice: Number(e.target.value) } : prev
+          )
+        }
+        className="w-full p-2 rounded bg-gray-800 text-white mb-4"
+      />
 
-            <label className="block mb-2">Times</label>
-            {newTimes.map((t, i) => (
-              <input
-                key={i}
-                type="time"
-                value={t}
-                onChange={(e) =>
-                  setNewTimes((prev) =>
-                    prev.map((x, idx) => (idx === i ? e.target.value : x))
-                  )
-                }
-                className="w-full p-2 rounded bg-gray-800 text-white mb-2"
-              />
-            ))}
+      {/* Normal Ticket Price */}
+      <label className="block mb-2">Normal Ticket Price</label>
+      <input
+        type="number"
+        value={editShow.normalTicketPrice || 0}
+        onChange={(e) =>
+          setEditShow((prev) =>
+            prev ? { ...prev, normalTicketPrice: Number(e.target.value) } : prev
+          )
+        }
+        className="w-full p-2 rounded bg-gray-800 text-white mb-4"
+      />
 
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => setEditShow(null)}
-                className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer"
-                disabled={updating}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdate}
-                disabled={updating}
-                className={`px-4 py-2 rounded cursor-pointer ${
-                  updating
-                    ? "bg-blue-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {updating ? "Saving..." : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Showtime Times */}
+      <label className="block mb-2">Times</label>
+      {newTimes.map((t, i) => (
+        <input
+          key={i}
+          type="time"
+          value={t}
+          onChange={(e) =>
+            setNewTimes((prev) =>
+              prev.map((x, idx) => (idx === i ? e.target.value : x))
+            )
+          }
+          className="w-full p-2 rounded bg-gray-800 text-white mb-2"
+        />
+      ))}
+      <button
+        onClick={() => setNewTimes((prev) => [...prev, ""])}
+        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded mb-4"
+      >
+        + Add Time
+      </button>
+
+      {/* Buttons */}
+      <div className="flex justify-end gap-3 mt-4">
+        <button
+          onClick={() => setEditShow(null)}
+          className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer"
+          disabled={updating}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            if (!editShow) return;
+            try {
+              setUpdating(true);
+
+              const res = await fetch(`${BASE_URL}/showtimes/${editShow._id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  movie: selectedMovieId,
+                  date: newDate,
+                  times: newTimes.filter((t) => t), // remove empty
+                  ticketPrices: {
+                    VIP: editShow.vipTicketPrice || 500,
+                    Normal: editShow.normalTicketPrice || 300,
+                  },
+                }),
+              });
+
+              if (!res.ok) throw new Error("Failed to update showtime");
+
+              toast.success("✅ Showtime updated successfully");
+              setEditShow(null);
+              fetchShowtimes(); // refresh list immediately
+            } catch {
+              toast.error("❌ Error updating showtime");
+            } finally {
+              setUpdating(false);
+            }
+          }}
+          disabled={updating}
+          className={`px-4 py-2 rounded cursor-pointer ${
+            updating ? "bg-blue-500 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {updating ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

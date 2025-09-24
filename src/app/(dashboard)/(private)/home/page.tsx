@@ -1,162 +1,105 @@
 'use client';
 
-import Link from "next/link";
-import { ToastContainer } from "react-toastify";
-import { Film, Play, Ticket, BarChart2, UserPlus, Clock } from "lucide-react";
-import { useEffect, useState } from "react";
-import AuthGuard from "@/components/AuthGuard";
-import HomeWrapper from "@/components/HomeWrapper";
+import Link from 'next/link';
+import { ToastContainer } from 'react-toastify';
+import { useEffect, useState } from 'react';
+import AuthGuard from '@/components/AuthGuard';
+import HomeWrapper from '@/components/HomeWrapper';
+import { Sparkles } from 'lucide-react';
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
 
-  // Load user from localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
+    const savedUser = localStorage.getItem('user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
   }, []);
 
-  // Default menu items
-  const baseMenu = [
-    {
-      name: "Start Booking",
-      icon: Film,
-      path: "/start-booking",
-      desc: "Begin the booking process for a movie",
-    },
-    {
-      name: "Movies",
-      icon: Play,
-      path: "/movies",
-      desc: "See which movies are currently showing",
-    },
-    {
-      name: "Screens",
-      icon: Ticket,
-      path: "/Screens",
-      desc: "View available screening rooms",
-    },
-  ];
-
-  // If admin, add extra options
-  const menuItems =
-    user?.role === "admin"
-      ? [
-          ...baseMenu,
-         
-          {
-            name: "User",
-            icon: UserPlus,
-            path: "/users",
-            desc: "Create a new cinema manager or staff account",
-          },
-          {
-            name: "Report",
-            icon: BarChart2,
-            path: "/report",
-            desc: "Access detailed booking reports",
-          },
-         
-         
-        ]
-      : baseMenu;
-
   return (
     <AuthGuard>
       <HomeWrapper>
-        <div className="flex w-full h-[calc(100vh-77px)] overflow-hidden">
+        <div className="flex w-full h-[calc(100vh-79px)] overflow-hidden relative bg-gradient-to-br from-gray-900 to-gray-950">
           {/* Toast Notification */}
           <ToastContainer position="top-center" autoClose={1000} theme="dark" />
 
-          {/* Main Content */}
-          <main className="flex-1 relative overflow-hidden">
-            {/* Background Image */}
-            <div
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat z-0"
-              style={{ backgroundImage: "url('/images/home.jpg')" }}
-            />
+          {/* Background Overlay & Effects */}
+          <div
+            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-30 animate-background-pulse" // Added background pulse
+            style={{ backgroundImage: "url('/images/home.jpg')" }} // Changed back to home.jpg as per original
+          />
+          {/* Gradients with subtle shift animations */}
+          <div className="absolute inset-0 z-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent opacity-70 animate-gradient-shift-t"></div>
+          <div className="absolute inset-0 z-0 bg-gradient-to-r from-gray-950 via-transparent to-transparent opacity-40 animate-gradient-shift-r"></div>
 
-            {/* Floating circles */}
-            <div className="absolute top-0 left-0 w-full h-full z-0">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute rounded-full bg-white/5 animate-pulse-slow"
-                  style={{
-                    width: `${200 + i * 40}px`,
-                    height: `${200 + i * 40}px`,
-                    top: `${20 + i * 15}%`,
-                    left: `${10 + i * 20}%`,
-                    transform: `translate(-50%, -50%)`,
-                    animationDelay: `${i * 2}s`,
-                  }}
-                />
-              ))}
-            </div>
+          {/* Floating circles - Enhanced */}
+          <div className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none">
+            {[...Array(7)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full bg-white/5 blur-xl animate-float-gentle"
+                style={{
+                  width: `${150 + i * 30}px`,
+                  height: `${150 + i * 30}px`,
+                  top: `${15 + i * 10}%`,
+                  left: `${10 + i * 15}%`,
+                  transform: `translate(-50%, -50%)`,
+                  animationDelay: `${i * 2.5}s`,
+                  opacity: `${0.1 + i * 0.05}`,
+                }}
+              />
+            ))}
+          </div>
 
-            {/* Content (scrollable only inside) */}
-            <div className="relative z-10 h-[calc(100vh-77px)] scrollbar-y">
-              <div className="max-w-6xl mx-auto">
-                {/* Heading */}
-                <div className="text-center ml-35 mb-12 animate-fade-in">
-                  <h1
-                    className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight 
-                    bg-gradient-to-r from-gray-900 to-gray-900
-                    bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-                  >
-                    Welcome to the Cinema
-                  </h1>
-                  <p className="text-xl font-bold md:text-xl text-black max-w-2xl mx-auto leading-relaxed animate-pulse-slow">
-                    Manage your cinema with{" "}
-                    <span className="text-gray-900 font-bold">Precision</span>{" "}
-                    and{" "}
-                    <span className="text-gray-900 font-bold">Efficiency</span>
-                  </p>
+          {/* Main Content: Flexbox for centering */}
+          <main className="relative z-10 flex flex-col items-center justify-center w-full p-8 text-center">
+            <div className="max-w-4xl">
+              {/* Heading */}
+              <div className="mb-8 animate-fade-in-up">
+                <h1
+                  className="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight 
+                  bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-purple-400
+                  drop-shadow-[0_0_30px_rgba(150,0,255,0.4)]"
+                >
+                  Siddiqui Cineplex
+                </h1>
+                <p className="text-xl md:text-2xl text-gray-300 max-w-2xl mx-auto leading-relaxed animate-pulse-light">
+                  Experience{' '}
+                  <span className="text-purple-400 font-bold">Cinema</span>{' '}
+                  Reimagined: <br /> Manage with{' '}
+                  <span className="text-purple-400 font-bold">Precision</span>{' '}
+                  and{' '}
+                  <span className="text-purple-400 font-bold">Efficiency</span>
+                </p>
+              </div>
+
+              {/* Bitmoji and Button */}
+              <div className="flex flex-col lg:flex-row items-center justify-center gap-12 w-full">
+                {/* Bitmoji - Enhanced */}
+                <div className="relative flex-shrink-0 animate-float-bounce"> {/* Changed float-subtle to float-bounce */}
+                  <img
+                    src="/images/bitemogi.png"
+                    alt="Welcome Emoji"
+                    className="relative w-44 h-auto object-contain z-10 drop-shadow-[0_0_25px_rgba(160,0,255,0.5)] transition-transform duration-500 hover:scale-105"
+                  />
                 </div>
 
-                {/* Content Row */}
-                <div className="flex flex-col lg:flex-row items-center justify-center gap-7 lg:gap-3">
-                  {/* Emoji */}
-                  <div className="relative flex-shrink-0 animate-float">
-                    <img
-                      src="/images/bitemogi.png"
-                      alt="Welcome Emoji"
-                      className="relative w-56 h-96 object-contain z-10"
-                    />
-                  </div>
-
-                  {/* Action Buttons Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-                    {menuItems.map((item, index) => (
-                      <div
-                        key={index}
-                        className="group relative animate-fade-in"
-                        style={{ animationDelay: `${index * 0.1 + 0.3}s` }}
-                      >
-                        <div className="absolute -inset-0.5 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 rounded-2xl opacity-75 group-hover:opacity-100 transition duration-300 group-hover:blur-md"></div>
-                        <Link href={item.path} className="relative block">
-                          <div className="relative flex flex-col justify-between h-full bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 transition-all duration-300 transform group-hover:-translate-y-1 group-hover:shadow-2xl overflow-hidden">
-                            <div className="mb-4">
-                              <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-white/10 backdrop-blur-sm">
-                                <item.icon className="w-6 h-6 text-white" />
-                              </div>
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-semibold text-white mb-2">
-                                {item.name}
-                              </h3>
-                              <p className="text-purple-100 text-sm opacity-90 group-hover:opacity-100 transition-opacity">
-                                {item.desc}
-                              </p>
-                            </div>
-                          </div>
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                {/* Single Action Button */}
+                <Link
+                  href="/this-project-admin-dashboard"
+                  className="group relative inline-flex items-center justify-center px-10 py-5 font-bold 
+                             text-white rounded-full shadow-lg 
+                             bg-gradient-to-br from-purple-700 to-indigo-900 
+                             hover:from-purple-800 hover:to-indigo-900 
+                             transition-all duration-300 ease-in-out 
+                             transform hover:scale-105 hover:shadow-xl 
+                             active:scale-95 animate-fade-in-scale"
+                >
+                  <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 bg-gradient-to-br from-purple-500 to-indigo-700 blur-sm transition-opacity duration-300"></div>
+                  <Sparkles className="w-6 h-6 mr-3 text-purple-200 group-hover:text-white transition-colors duration-300" />
+                  <span className="relative z-10 text-xl">Continue to Dashboard</span>
+                </Link>
               </div>
             </div>
           </main>
