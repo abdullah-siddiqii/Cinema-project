@@ -262,7 +262,7 @@ export default function StartBooking() {
       </div>
 
       {/* Edit Modal */}
-    // Edit Modal + Update logic (inside your StartBooking component)
+    
 
 {/* -------------------- Edit Modal -------------------- */}
 {editShow && (
@@ -342,7 +342,7 @@ export default function StartBooking() {
         + Add Time
       </button>
 
-      {/* Buttons */}
+   
       <div className="flex justify-end gap-3 mt-4">
         <button
           onClick={() => setEditShow(null)}
@@ -363,7 +363,7 @@ export default function StartBooking() {
                 body: JSON.stringify({
                   movie: selectedMovieId,
                   date: newDate,
-                  times: newTimes.filter((t) => t), // remove empty
+                  times: newTimes.filter((t) => t), 
                   ticketPrices: {
                     VIP: editShow.vipTicketPrice || 500,
                     Normal: editShow.normalTicketPrice || 300,
@@ -375,7 +375,7 @@ export default function StartBooking() {
 
               toast.success("✅ Showtime updated successfully");
               setEditShow(null);
-              fetchShowtimes(); // refresh list immediately
+              fetchShowtimes();
             } catch {
               toast.error("❌ Error updating showtime");
             } finally {
