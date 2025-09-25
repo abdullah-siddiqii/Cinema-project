@@ -133,6 +133,7 @@ export default function StartBooking() {
           normalTicketPrice: editShow.normalTicketPrice,
         }),
       });
+      
       if (!res.ok) throw new Error("Failed");
       toast.success("✅ Showtime updated");
       setEditShow(null);
