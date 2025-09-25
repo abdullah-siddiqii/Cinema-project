@@ -50,12 +50,15 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
-  if (loading)
-    return (
+ if (loading)
+  return (
+    <HomeWrapper>
       <div className="flex items-center justify-center h-[calc(100vh-79px)] bg-gray-900">
-        <HomeWrapper children={undefined} />
+        <p className="text-gray-300 text-xl">Loading Dashboard...</p>
       </div>
-    );
+    </HomeWrapper>
+  );
+
 
   if (error || !stats)
     return (
