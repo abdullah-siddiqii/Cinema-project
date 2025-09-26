@@ -13,6 +13,7 @@ export default function Home() {
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) setUser(JSON.parse(savedUser));
+    
   }, []);
 
   return (
