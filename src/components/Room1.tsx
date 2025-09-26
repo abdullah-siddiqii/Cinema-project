@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import 'react-toastify/dist/ReactToastify.css';
 import HomeWrapper from '@/components/HomeWrapper';
-import { FaUser, FaPhoneAlt, FaTicketAlt, FaChair } from 'react-icons/fa';
+import { FaUser, FaTicketAlt, FaChair } from 'react-icons/fa';
 import { Clapperboard, MonitorDot, CalendarDays, ChevronRight } from 'lucide-react';
 
 /* -------------------- Types -------------------- */
@@ -50,13 +50,21 @@ interface Showtime {
   seats: SeatWithBooking[];
 }
 
+/** Selected seat stored in frontend state */
+interface SelectedSeat {
+  id: string;
+  seatNumber: string;
+  price: number;
+}
+
 /* -------------------- Booking Page -------------------- */
 export default function BookingPage() {
   const { id } = useParams();
   const BASE_URL = 'https://abdullah-test.whitescastle.com';
 
   const [showtime, setShowtime] = useState<Showtime | null>(null);
-  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
+
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [discountPrice, setDiscountPrice] = useState<number | null>(null);
@@ -104,7 +112,7 @@ export default function BookingPage() {
         movie: { _id: data.movie._id, title: data.movie.title },
         room: { ...data.room, seats },
         date: new Date(data.date).toLocaleDateString(),
-       time: new Date(data.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
+        time: new Date(data.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         ticketPrices: data.ticketPrices || { VIP: 700, Normal: 400 },
         seats,
       });
@@ -119,6 +127,7 @@ export default function BookingPage() {
     if (id) fetchShowtime();
     const savedUser = localStorage.getItem('user');
     if (savedUser) setUser(JSON.parse(savedUser));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   /* -------------------- Seat Selection -------------------- */
@@ -132,11 +141,19 @@ export default function BookingPage() {
       return;
     }
 
-    setSelectedSeats((prev) =>
-      prev.includes(seatNumber) ? prev.filter((s) => s !== seatNumber) : [...prev, seatNumber]
-    );
-  };
+    const seatId = seat._id;
+    const seatPrice = seat.type === 'VIP' ? showtime.ticketPrices.VIP : showtime.ticketPrices.Normal;
+    const seatObj: SelectedSeat = { id: seatId, seatNumber: seat.seatNumber, price: seatPrice };
 
+    setSelectedSeats((prev) => {
+      const exists = prev.find((s) => s.id === seatId);
+      if (exists) {
+        return prev.filter((s) => s.id !== seatId); // remove
+      } else {
+        return [...prev, seatObj]; // add
+      }
+    });
+  };
 
   /* -------------------- Handle Booking -------------------- */
   const handleBooking = async () => {
@@ -165,42 +182,41 @@ export default function BookingPage() {
     setBookingLoading(true);
 
     try {
-      const ticketPrice = selectedSeats.reduce((sum, seatNum) => {
-        const seat = showtime.seats.find((s) => s.seatNumber === seatNum);
-        if (!seat) return sum;
-        return sum + (seat.type === 'VIP' ? showtime.ticketPrices.VIP : showtime.ticketPrices.Normal);
-      }, 0);
-
+      // frontend has exact seat prices already
+      const ticketPrice = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
       const totalPrice = ticketPrice - (discountPrice || 0);
+   
+
+      const payload = {
+        showtimeId: showtime._id,
+        roomId: showtime.room._id,
+        // backend expects array of objects with id and price
+        seat: selectedSeats.map(({ id, price }) => ({ id, price })),
+        customerName,
+        customerPhone,
+        ticketPrice,
+        discountPrice,
+        discountReference,
+        paymentMethod,
+        transactionId,
+        bankName,
+        totalPrice,
+      };
 
       const res = await fetch(`${BASE_URL}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          showtimeId: showtime._id,
-          roomId: showtime.room._id,
-          seat: selectedSeats,
-          customerName,
-          customerPhone,
-          ticketPrice,
-          discountPrice,
-          discountReference,
-          paymentMethod,
-          transactionId,
-          bankName,
-          totalPrice,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Booking failed');
 
       toast.success('Booking confirmed!');
-
-      // After a successful booking, re-fetch the showtime data to get the latest seat status
+      // refresh seats
       fetchShowtime();
 
-      // Reset form fields
+      // reset form
       setSelectedSeats([]);
       setCustomerName('');
       setCustomerPhone('');
@@ -210,7 +226,7 @@ export default function BookingPage() {
       setPaymentMethod('Cash');
       setBankName('HBL');
       setHasDiscount(false);
-      setLoading(false)
+      setLoading(false);
     } catch (err: any) {
       toast.error(err.message || 'Booking failed');
     } finally {
@@ -228,14 +244,10 @@ export default function BookingPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to cancel booking');
-      
+
       toast.success(`Booking cancelled for seat ${seatNumber}`);
-      
-      // Re-fetch the showtime data to get the latest seat status.
-      // This is the core fix to ensure the UI updates correctly.
       fetchShowtime();
       setLoading(false);
-
     } catch (err: any) {
       toast.error(err.message || 'Server error while cancelling booking');
     }
@@ -248,10 +260,9 @@ export default function BookingPage() {
 
   const rows = Math.max(...showtime.seats.map((s) => s.row), 0);
   const cols = Math.max(...showtime.seats.map((s) => s.column), 0);
-  const ticketPrice = selectedSeats.reduce((sum, s) => {
-    const seat = showtime.seats.find((seat) => seat.seatNumber === s);
-    return sum + (seat?.type === 'VIP' ? showtime.ticketPrices.VIP : showtime.ticketPrices.Normal);
-  }, 0);
+
+  // compute ticketPrice from selectedSeats objects (frontend has price)
+  const ticketPrice = selectedSeats.reduce((sum, s) => sum + s.price, 0);
   const totalPrice = ticketPrice - (discountPrice || 0);
 
   return (
@@ -318,7 +329,7 @@ export default function BookingPage() {
             <section className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FaTicketAlt className="text-blue-400" /> Booking Summary</h2>
               <ul className="text-gray-400 space-y-2 mb-6">
-                <li className="flex justify-between"><span>Seats:</span> <span>{selectedSeats.join(', ') || 'None'}</span></li>
+                <li className="flex justify-between"><span>Seats:</span> <span>{selectedSeats.length ? selectedSeats.map(s => s.seatNumber).join(', ') : 'None'}</span></li>
                 <li className="flex justify-between"><span>Tickets:</span> <span>{selectedSeats.length}</span></li>
                 <li className="flex justify-between"><span>Ticket Price:</span> <span>Rs. {ticketPrice}</span></li>
                 {(discountPrice ?? 0) > 0 && (
@@ -350,8 +361,11 @@ export default function BookingPage() {
                       const seat = showtime.seats.find((s) => s.row === r + 1 && s.column === c + 1);
                       if (!seat) return <div key={`${r}-${c}`} />;
 
+                      // check selected by id
+                      const isSelected = selectedSeats.some(sel => sel.id === seat._id);
+
                       let className = '';
-                      if (selectedSeats.includes(seat.seatNumber)) className = 'bg-cyan-500 hover:bg-cyan-600 border-2 border-white shadow-lg cursor-pointer';
+                      if (isSelected) className = 'bg-cyan-500 hover:bg-cyan-600 border-2 border-white shadow-lg cursor-pointer';
                       else if (seat.isBooked) className = 'bg-red-600 opacity-80 cursor-pointer';
                       else if (seat.type === 'Disabled' || (!seat.isAvailable && !seat.isBooked)) className = 'bg-gray-500 cursor-not-allowed';
                       else if (seat.type === 'VIP') className = 'bg-amber-400 hover:bg-amber-500 shadow-amber-300/50 text-black cursor-pointer';

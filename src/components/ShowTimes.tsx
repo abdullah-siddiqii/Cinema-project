@@ -131,6 +131,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           className="bg-gray-800/90 p-4 rounded-lg shadow-md space-y-4"
         >
           {/* Movie */}
+           <p className="mb-2">Movies</p>
           <select
             value={movie}
             onChange={(e) => setMovie(e.target.value)}
@@ -145,6 +146,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           </select>
 
           {/* Room */}
+           <p className="mb-2">Screens</p>
           <select
             value={room}
             onChange={(e) => setRoom(e.target.value)}
@@ -159,6 +161,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           </select>
 
           {/* Date */}
+           <p className="mb-2">Date</p>
           <input
             type="date"
             value={date}
@@ -167,6 +170,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           />
 
           {/* Ticket Prices */}
+         <p className="mb-2">Ticket Price VIP/Normal</p> 
           <div className="flex gap-4">
             <input
               type="number"

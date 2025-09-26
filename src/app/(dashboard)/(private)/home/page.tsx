@@ -73,7 +73,7 @@ export default function Home() {
 
                 {/* Dashboard Button */}
                 <Link
-                  href="/this-project-admin-dashboard"
+                  href="/admin-dashboard"
                   className="relative inline-flex items-center justify-center px-12 py-5 font-bold text-white rounded-full shadow-lg bg-gray-800 hover:bg-gray-700 transition-all duration-300 transform hover:scale-105 active:scale-95"
                 >
                   <Sparkles className="w-6 h-6 mr-3 text-gray-300 animate-pulse" />

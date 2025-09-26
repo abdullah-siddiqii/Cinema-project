@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Film, Play, Ticket, BarChart2, Menu, X, UserPlus } from 'lucide-react';
+import { Film, Play, Ticket, BarChart2, Menu, X, UserPlus, LayoutDashboard } from 'lucide-react';
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,15 +26,21 @@ export default function Sidebar() {
     if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
+  // Base menu (without admin-only items)
   const baseMenu = [
     { name: 'Start Booking', icon: Film, path: '/start-booking' },
     { name: 'Movies', icon: Play, path: '/movies' },
     { name: 'Screens', icon: Ticket, path: '/Screens' },
   ];
 
-  const menuItems = user?.role === 'admin'
-    ? [...baseMenu, { name: 'Users', icon: UserPlus, path: '/users' }, { name: 'Report', icon: BarChart2, path: '/report' }]
-    : baseMenu;
+  // Admin-only menu
+  const adminMenu = [
+    { name: 'Users', icon: UserPlus, path: '/users' },
+    { name: 'Report', icon: BarChart2, path: '/report' },
+  ];
+
+  // Final menu
+  const menuItems = user?.role === 'admin' ? [...baseMenu, ...adminMenu] : baseMenu;
 
   const sidebarVisible = isDesktop || isOpen;
 
@@ -53,10 +59,25 @@ export default function Sidebar() {
         animate={{ x: sidebarVisible ? 0 : -300 }}
         transition={{ duration: 0.3 }}
         className="fixed md:static top-0 left-0 h-[calc(100vh-77px)] w-64 bg-black/50 text-white p-4 shadow-lg flex flex-col z-50"
-
       >
         {/* Title */}
         <h1 className="hidden md:block text-xl font-bold mb-6">Cinema Admin</h1>
+
+        {/* Admin Dashboard (Top Only for Admin) */}
+        {user?.role === 'admin' && (
+          <Link
+            href="/admin-dashboard"
+            onClick={() => !isDesktop && setIsOpen(false)}
+            className={`mb-6 w-full flex items-center gap-3 px-5 py-4 rounded-xl shadow-md transition transform hover:-translate-y-0.5 active:translate-y-0
+              ${pathname.startsWith('/admin-dashboard')
+                ? 'bg-blue-600 shadow-lg text-white'
+                : 'bg-gray-800 text-white hover:bg-gray-700 hover:shadow-lg'
+              }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span>Admin Dashboard</span>
+          </Link>
+        )}
 
         {/* Menu */}
         <div className="flex-1 overflow-y-auto">
@@ -80,8 +101,6 @@ export default function Sidebar() {
               );
             })}
           </nav>
-
-          
         </div>
 
         {/* Footer */}

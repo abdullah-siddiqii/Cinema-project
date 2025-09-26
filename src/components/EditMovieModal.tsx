@@ -19,40 +19,55 @@ interface EditMovieModalProps {
   onSave: () => void;
 }
 
+const API_BASE = "https://abdullah-test.whitescastle.com"; // 👈 apna backend domain
+
+// Helper to build full poster URL
+const getPosterUrl = (poster: string) => {
+  if (!poster) return "";
+  return poster.startsWith("http")
+    ? poster
+    : `${API_BASE}/${poster.replace(/^\/+/, "")}`;
+};
+
 export default function EditMovieModal({ movie, isOpen, onClose, onSave }: EditMovieModalProps) {
   const [title, setTitle] = useState('');
   const [year, setYear] = useState('');
   const [plot, setPlot] = useState('');
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [posterPath, setPosterPath] = useState(''); // current poster path
+  const [posterPath, setPosterPath] = useState(''); // preview OR backend URL
   const [loading, setLoading] = useState(false);
   const [showPosterPopup, setShowPosterPopup] = useState(false);
 
+  // Load movie data into state
   useEffect(() => {
     if (movie) {
       setTitle(movie.title);
       setYear(movie.year);
       setPlot(movie.plot);
-      setPosterPath(movie.poster || '');
+      setPosterPath(getPosterUrl(movie.poster));
       setPosterFile(null);
     }
   }, [movie]);
 
+  // Poster selection (preview only)
   const handlePosterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setPosterFile(file);
-    setPosterPath(URL.createObjectURL(file)); // preview for popup
+    setPosterPath(URL.createObjectURL(file)); // Local preview
   };
 
+  // Poster delete
   const handleDeletePoster = () => {
     setPosterFile(null);
     setPosterPath('');
   };
 
+  // Save movie update
   const handleSave = async () => {
     if (!movie) return;
     setLoading(true);
+
     try {
       const formData = new FormData();
       formData.append('title', title);
@@ -60,15 +75,16 @@ export default function EditMovieModal({ movie, isOpen, onClose, onSave }: EditM
       formData.append('plot', plot);
 
       if (posterFile) {
-        formData.append('poster', posterFile);
+        formData.append('poster', posterFile); // Upload new file
       } else if (!posterPath) {
-        formData.append('poster', ''); // indicate deletion
+        formData.append('poster', ''); // No poster (deleted)
       }
 
-      const res = await fetch(
-        `https://abdullah-test.whitescastle.com/api/movies/${movie._id}`,
-        { method: 'PUT', body: formData, credentials: 'include' }
-      );
+      const res = await fetch(`${API_BASE}/api/movies/${movie._id}`, {
+        method: 'PUT',
+        body: formData,
+        credentials: 'include',
+      });
 
       const text = await res.text();
       let data;
@@ -82,6 +98,12 @@ export default function EditMovieModal({ movie, isOpen, onClose, onSave }: EditM
 
       if (res.ok) {
         toast.success('Movie updated successfully');
+
+        // ✅ Update posterPath with backend URL
+        if (data.updatedMovie?.poster) {
+          setPosterPath(getPosterUrl(data.updatedMovie.poster));
+        }
+
         onSave();
         onClose();
       } else {
@@ -157,7 +179,9 @@ export default function EditMovieModal({ movie, isOpen, onClose, onSave }: EditM
                     className="hidden"
                     onChange={handlePosterChange}
                   />
-                  <span className="px-2 py-1 bg-gray-700 rounded-lg text-white hover:bg-gray-600">Browse</span>
+                  <span className="px-2 py-1 bg-gray-700 rounded-lg text-white hover:bg-gray-600">
+                    Browse
+                  </span>
                 </label>
                 {posterPath && (
                   <>
