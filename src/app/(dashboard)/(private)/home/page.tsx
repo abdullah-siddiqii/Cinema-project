@@ -70,8 +70,7 @@ export default function Home() {
                     className="w-44 h-auto object-contain drop-shadow-xl transition-transform duration-500 hover:scale-105"
                   />
                 </div>
-
-                {/* Dashboard Button */}
+      
                 <Link
                   href="/admin-dashboard"
                   className="relative inline-flex items-center justify-center px-12 py-5 font-bold text-white rounded-full shadow-lg bg-gray-800 hover:bg-gray-700 transition-all duration-300 transform hover:scale-105 active:scale-95"
