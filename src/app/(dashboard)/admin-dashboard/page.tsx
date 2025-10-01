@@ -95,16 +95,16 @@ export default function AdminDashboard() {
   const handleRetry = () => fetchStats();
 
   // --- LOADING STATE ---
-  if (loading && !stats) return (
-    <HomeWrapper>
-      <div className="flex items-center justify-center h-[calc(100vh-79px)] bg-gradient-to-br from-gray-900 to-gray-800">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-300 text-xl font-light">Loading Dashboard...</p>
-        </div>
-      </div>
-    </HomeWrapper>
-  );
+  // if (loading && !stats) return (
+  //   <HomeWrapper>
+  //     <div className="flex items-center justify-center h-[calc(100vh-79px)] bg-gradient-to-br from-gray-900 to-gray-800">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-500 border-t-transparent mx-auto mb-4"></div>
+  //         <p className="text-gray-300 text-xl font-light">Loading Dashboard...</p>
+  //       </div>
+  //     </div>
+  //   </HomeWrapper>
+  // );
 
   // --- ERROR STATE ---
   if (error || !stats) return (
@@ -338,7 +338,7 @@ export default function AdminDashboard() {
               {/* Footer */}
               <div className="text-center mt-3 mb-5 pt-8 border-t border-gray-700/50">
                 <p className="text-gray-400 text-lg font-light">
-                 🌐 Last updated: <strong>{lastUpdated?.toLocaleTimeString()}</strong> on {lastUpdated?.toLocaleDateString()} • Auto-refresh every 5 minutes
+                 🌐 Last updated: <strong>{lastUpdated?.toLocaleTimeString()}</strong> on {lastUpdated?.toLocaleDateString()} • Auto-refresh every minute
                 </p>
               </div>
             </div>

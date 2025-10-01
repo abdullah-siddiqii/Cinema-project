@@ -7,7 +7,7 @@ import Swal from 'sweetalert2';
 import 'react-toastify/dist/ReactToastify.css';
 import HomeWrapper from '@/components/HomeWrapper';
 import { FaUser, FaTicketAlt, FaChair } from 'react-icons/fa';
-import { Clapperboard, MonitorDot, CalendarDays, ChevronRight } from 'lucide-react';
+import { Clapperboard, MonitorDot, CalendarDays, ChevronRight, CheckCircle } from 'lucide-react';
 
 /* -------------------- Types -------------------- */
 interface Seat {
@@ -27,7 +27,6 @@ interface SeatWithBooking extends Seat {
 interface Room {
   _id: string;
   name: string;
-  seats: SeatWithBooking[];
 }
 
 interface Movie {
@@ -57,10 +56,27 @@ interface SelectedSeat {
   price: number;
 }
 
+/* New type for booking response data */
+interface BookingDetails {
+    bookingId: string;
+    showtimeId: string;
+    seats: { id: string; seatNumber: string; price: number }[];
+    customerName: string;
+    customerPhone: string;
+    totalPrice: number;
+    paymentMethod: 'Cash' | 'JazzCash/EasyPaisa' | 'Bank';
+    transactionId?: string;
+    bankName?: 'HBL' | 'Allied' | 'UBL' | 'Meezan';
+    discountPrice?: number;
+}
+
+
 /* -------------------- Booking Page -------------------- */
 export default function BookingPage() {
   const { id } = useParams();
   const BASE_URL = 'https://abdullah-test.whitescastle.com';
+  // You might want to get this from an environment variable or a configuration file
+  const CINEMA_NAME = 'Whites Castle Cinemas'; 
 
   const [showtime, setShowtime] = useState<Showtime | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
@@ -76,7 +92,7 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null); // user data for cancelation logic
 
   /* -------------------- Fetch Showtime -------------------- */
   const fetchShowtime = async () => {
@@ -110,7 +126,7 @@ export default function BookingPage() {
       setShowtime({
         _id: data._id,
         movie: { _id: data.movie._id, title: data.movie.title },
-        room: { ...data.room, seats },
+        room: { ...data.room, seats: [] }, // The room seats structure is complex, use the derived 'seats' array below.
         date: new Date(data.date).toLocaleDateString(),
         time: new Date(data.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         ticketPrices: data.ticketPrices || { VIP: 700, Normal: 400 },
@@ -155,6 +171,127 @@ export default function BookingPage() {
     });
   };
 
+  /* -------------------- Print Ticket -------------------- */
+  const printTicket = (booking: BookingDetails) => {
+    if (!showtime) return;
+
+    const seatsList = booking.seats.map(s => s.seatNumber).join(', ');
+    const seatCount = booking.seats.length;
+    const discountedPrice = booking.discountPrice ?? 0;
+    const finalPrice = booking.totalPrice;
+
+const ticketHtml = `
+  <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background-color: #fff; color: #000; max-width: 450px; margin: 0 auto;">
+    <div style="border: 2px solid #000; border-radius: 10px; background: #fff; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      
+      <!-- Cineplex Title -->
+      <h2 style="text-align: center; color: #000; margin: 0; font-size: 22px; letter-spacing: 1px; text-transform: uppercase;">
+        🎥 Siddiqui Cineplex 4K / 3D
+      </h2>
+
+      <!-- Confirmation -->
+      <h3 style="text-align: center; margin: 10px 0 20px; color: #000; border-bottom: 1px solid #000; padding-bottom: 10px; font-size: 18px;">
+        ✅ Ticket Confirmed
+      </h3>
+
+      <!-- Movie & Showtime Details -->
+      <h4 style="margin: 0 0 10px; font-size: 16px; color: #000; border-bottom: 1px solid #000; padding-bottom: 8px;">
+        Showtime Details
+      </h4>
+      <p style="font-size: 16px; font-weight: bold; margin: 0 0 15px; color: #000;">
+        ${showtime.movie.title}
+      </p>
+      <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px; color: #000;">
+        <li style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span>📅 Date & Time:</span>
+          <span style="font-weight: bold;">${showtime.date} @ ${showtime.time}</span>
+        </li>
+        <li style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span>🏛 Room:</span>
+          <span style="font-weight: bold;">${showtime.room.name}</span>
+        </li>
+        <li style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px dashed #000;">
+          <span>🪑 Seats (${seatCount}):</span>
+          <span style="font-weight: bold;">${seatsList}</span>
+        </li>
+      </ul>
+
+      <!-- Customer Details -->
+      <h4 style="margin: 20px 0 10px; font-size: 16px; color: #000; border-top: 1px solid #000; padding-top: 12px;">
+        Customer Details
+      </h4>
+      <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px; color: #000;">
+        <li style="margin-bottom: 8px;">
+          <strong>Name:</strong> ${booking.customerName}
+        </li>
+        <li>
+          <strong>Phone:</strong> ${booking.customerPhone}
+        </li>
+      </ul>
+
+      <!-- Payment Summary -->
+      <h4 style="margin: 20px 0 10px; font-size: 16px; color: #000; border-top: 1px solid #000; padding-top: 12px;">
+        Payment Summary
+      </h4>
+      <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px; color: #000;">
+        <li style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span>Method:</span>
+          <span style="font-weight: bold;">${booking.paymentMethod}</span>
+        </li>
+        ${discountedPrice > 0 ? `
+        <li style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span>Discount:</span>
+          <span style="font-weight: bold;">- Rs. ${discountedPrice.toLocaleString()}</span>
+        </li>` : ""}
+        <li style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px dashed #000; font-size: 16px; font-weight: bold;">
+          <span>Total:</span>
+          <span>Rs. ${finalPrice.toLocaleString()}</span>
+        </li>
+      </ul>
+
+      <!-- Footer -->
+      <p style="text-align: center; margin-top: 20px; font-size: 12px; color: #000;">
+        🎟 Thank you for choosing Siddiqui Cineplex 4K / 3D! <br/>
+        Enjoy your movie 🍿
+      </p>
+    </div>
+  </div>
+`;
+
+
+    Swal.fire({
+        title: '✅ Booking Complete!',
+        html: ticketHtml,
+        icon: undefined, // No standard icon for a clean ticket look
+        showCancelButton: true,
+        confirmButtonText: 'Print Ticket',
+        cancelButtonText: 'Close',
+        customClass: {
+            container: 'swal2-container-custom', // Custom class for styling the modal
+        },
+        // Styling for dark mode (assuming the app is dark)
+        background: '#1f2937', 
+        color: '#f8f9fa',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Function to handle printing the ticket content
+            const printContent = ticketHtml;
+            const printWindow = window.open('', '', 'height=600,width=800');
+            if (printWindow) {
+                printWindow.document.write('<html><head><title>Ticket Print</title>');
+                // Include any necessary print-specific CSS here if you had a separate print stylesheet
+                printWindow.document.write('</head><body>');
+                printWindow.document.write(printContent);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.print();
+            } else {
+                toast.error('Could not open print window. Please check your browser settings.');
+            }
+        }
+    });
+  };
+
   /* -------------------- Handle Booking -------------------- */
   const handleBooking = async () => {
     if (!customerName || !customerPhone || selectedSeats.length === 0) {
@@ -184,8 +321,9 @@ export default function BookingPage() {
     try {
       // frontend has exact seat prices already
       const ticketPrice = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
-      const totalPrice = ticketPrice - (discountPrice || 0);
-   
+      const discountAmount = discountPrice || 0;
+      const totalPrice = ticketPrice - discountAmount;
+      
 
       const payload = {
         showtimeId: showtime._id,
@@ -195,7 +333,7 @@ export default function BookingPage() {
         customerName,
         customerPhone,
         ticketPrice,
-        discountPrice,
+        discountPrice: discountAmount, // Use discountAmount which is 0 or actual discount
         discountReference,
         paymentMethod,
         transactionId,
@@ -213,6 +351,24 @@ export default function BookingPage() {
       if (!res.ok) throw new Error(data.message || 'Booking failed');
 
       toast.success('Booking confirmed!');
+      
+      // Data to pass to printTicket
+      const bookingDataForPrint: BookingDetails = {
+          bookingId: data._id, // Assuming the backend returns the new booking ID
+          showtimeId: showtime._id,
+          seats: selectedSeats.map(({ id, seatNumber, price }) => ({ id, seatNumber, price })),
+          customerName,
+          customerPhone,
+          totalPrice,
+          paymentMethod,
+          transactionId,
+          bankName,
+          discountPrice: discountAmount,
+      };
+
+      // Call the new print function
+      printTicket(bookingDataForPrint); 
+
       // refresh seats
       fetchShowtime();
 
@@ -226,7 +382,7 @@ export default function BookingPage() {
       setPaymentMethod('Cash');
       setBankName('HBL');
       setHasDiscount(false);
-      setLoading(false);
+      setLoading(false); // already false from fetchShowtime
     } catch (err: any) {
       toast.error(err.message || 'Booking failed');
     } finally {
@@ -236,6 +392,7 @@ export default function BookingPage() {
 
   /* -------------------- Cancel Booking -------------------- */
   const cancelBooking = async (seatNumber: string, bookingId: string) => {
+    setBookingLoading(true); // Re-use booking loading state
     try {
       const res = await fetch(`${BASE_URL}/api/bookings/cancel/${bookingId}`, {
         method: 'PUT',
@@ -247,9 +404,10 @@ export default function BookingPage() {
 
       toast.success(`Booking cancelled for seat ${seatNumber}`);
       fetchShowtime();
-      setLoading(false);
     } catch (err: any) {
       toast.error(err.message || 'Server error while cancelling booking');
+    } finally {
+        setBookingLoading(false);
     }
   };
 
@@ -263,7 +421,8 @@ export default function BookingPage() {
 
   // compute ticketPrice from selectedSeats objects (frontend has price)
   const ticketPrice = selectedSeats.reduce((sum, s) => sum + s.price, 0);
-  const totalPrice = ticketPrice - (discountPrice || 0);
+  const discountAmount = discountPrice || 0;
+  const totalPrice = ticketPrice - discountAmount;
 
   return (
     <HomeWrapper>
@@ -332,8 +491,8 @@ export default function BookingPage() {
                 <li className="flex justify-between"><span>Seats:</span> <span>{selectedSeats.length ? selectedSeats.map(s => s.seatNumber).join(', ') : 'None'}</span></li>
                 <li className="flex justify-between"><span>Tickets:</span> <span>{selectedSeats.length}</span></li>
                 <li className="flex justify-between"><span>Ticket Price:</span> <span>Rs. {ticketPrice}</span></li>
-                {(discountPrice ?? 0) > 0 && (
-                  <li className="flex justify-between text-green-400"><span>Discount:</span> <span>- Rs. {discountPrice}</span></li>
+                {discountAmount > 0 && (
+                  <li className="flex justify-between text-green-400"><span>Discount:</span> <span>- Rs. {discountAmount}</span></li>
                 )}
                 <li className="flex justify-between font-bold text-yellow-300 border-t border-gray-700 pt-2">
                   <span>Total:</span> <span>Rs. {totalPrice}</span>
@@ -380,8 +539,8 @@ export default function BookingPage() {
                             showCancelButton: true,
                             confirmButtonText: 'Yes',
                             cancelButtonText: 'No',
-                            background: 'black',
-                            color: 'white',
+                            background: '#1f2937', // Dark background for theme consistency
+                            color: '#f8f9fa', // Light text for theme consistency
                           }).then((res) => {
                             if (res.isConfirmed) cancelBooking(seat.seatNumber, seat.bookingId!);
                           });

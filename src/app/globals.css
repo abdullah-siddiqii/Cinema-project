@@ -157,6 +157,43 @@ body {
 
 
 /* ===================== */
-/* Links */
+/* Links */@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .bg-gray-900,
+  .bg-gray-950,
+  .bg-gray-800 {
+    background: white !important;
+  }
+
+  .text-gray-200,
+  .text-gray-300,
+  .text-gray-400,
+  .text-gray-500 {
+    color: black !important;
+  }
+
+  button,
+  input,
+  .print-hide {
+    display: none !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  table th,
+  table td {
+    border: 1px solid #000 !important;
+    padding: 8px !important;
+    color: black !important;
+  }
+}
+
 
 
