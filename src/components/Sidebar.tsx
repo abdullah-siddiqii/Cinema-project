@@ -80,7 +80,7 @@ export default function Sidebar() {
         )}
 
         {/* Menu */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scrollbar-y">
           <nav className="space-y-4">
             {menuItems.map((item) => {
               const isActive = pathname.startsWith(item.path);

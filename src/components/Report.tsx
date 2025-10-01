@@ -509,22 +509,30 @@ export default function Report() {
             <td className="p-4 whitespace-nowrap font-semibold text-green-400">
               {b.totalPrice.toLocaleString()}
             </td>
-            <td className="p-4 whitespace-nowrap">
-              {b.transactionId && b.bankName ? (
-                <button
-                  onClick={() =>
-                    setSelectedBank({ transactionId: b.transactionId!, bankName: b.bankName! })
-                  }
-                  className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer bg-gray-800 p-2 rounded"
-                  title="View Bank Details"
-                >
-                 View Details
-                  
-                </button>
-              ) : (
-                b.paymentMethod
-              )}
-            </td>
+        <td className="p-4 whitespace-nowrap">
+  {b.transactionId && b.bankName ? (
+    <>
+      {/* Normal screen view */}
+      <button
+        onClick={() =>
+          setSelectedBank({ transactionId: b.transactionId!, bankName: b.bankName! })
+        }
+        className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer bg-gray-800 p-2 rounded print:hidden"
+        title="View Bank Details"
+      >
+        View Details
+      </button>
+
+      {/* Print view (hidden on screen, shown only in print) */}
+      <span className="hidden print:inline text-black">
+        Bank
+      </span>
+    </>
+  ) : (
+    b.paymentMethod
+  )}
+</td>
+
            
             <td className="p-4 whitespace-nowrap">
               {b.isCancelled ? (
