@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useLayoutEffect } from 'react';
+import { useEffect, useState, useMemo, useLayoutEffect, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -81,6 +81,49 @@ const getSeatDisplay = (seat: Booking['seat']) => {
   return '—';
 };
 
+/**
+ * Helper to get an ISO date string for a specific date (YYYY-MM-DD).
+ * @param date The Date object.
+ * @returns An ISO date string.
+ */
+const getISODate = (date: Date): string => {
+  return date.toISOString().split('T')[0];
+};
+
+/**
+ * Helper to calculate start/end dates for quick filters.
+ * @param period 'today' | 'week' | 'last-month' | 'all' 
+ * @returns {[string, string]} [startDateISO, endDateISO]
+ */
+const getFilterDates = (period: 'today' | 'week' | 'last-month' | 'all'): [string, string] => {
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+
+  switch (period) {
+    case 'today':
+      return [getISODate(start), getISODate(end)];
+    case 'week':
+      // Start of the week (Sunday is 0, Monday is 1...):
+      const day = now.getDay();
+      start.setDate(now.getDate() - day);
+      return [getISODate(start), getISODate(end)];
+    case 'last-month':
+        // Start of Last Month
+        start.setDate(1); // Set to the 1st of the current month
+        start.setMonth(start.getMonth() - 1); // Go back one month
+        
+        // End of Last Month
+        end.setDate(1); // Set to the 1st of the current month
+        end.setDate(end.getDate() - 1); // Go back one day to the last day of last month
+        
+        return [getISODate(start), getISODate(end)];
+    case 'all':
+    default:
+      return ['', '']; // Clears filters
+  }
+};
+
 // ------------------ Main Component ------------------
 export default function Report() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -91,9 +134,29 @@ export default function Report() {
     bankName: string;
   } | null>(null);
 
+  // Quick Filter State - tracks which button is active
+  const [activeFilter, setActiveFilter] = useState<'today' | 'week' | 'last-month' | 'all'>('all');
+
+  // Date Filters
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [chartKey, setChartKey] = useState(0);
+
+  // Handler for quick filter buttons
+  const handleQuickFilter = useCallback((period: 'today' | 'week' | 'last-month' | 'all') => {
+    setActiveFilter(period);
+    const [start, end] = getFilterDates(period);
+    setStartDate(start);
+    setEndDate(end);
+    setSearch(''); // Clear search on quick filter change
+  }, []);
+  
+  // Set default filter to 'All Time' on initial load
+  useEffect(() => {
+    handleQuickFilter('all');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // Fetch Bookings
   useEffect(() => {
@@ -117,6 +180,16 @@ export default function Report() {
   useLayoutEffect(() => {
     setChartKey((prev) => prev + 1);
   }, [startDate, endDate]);
+
+  // Handle manual date input change and reset quick filter
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setStartDate(e.target.value);
+      setActiveFilter('all'); // Clear quick filter selection
+  };
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEndDate(e.target.value);
+      setActiveFilter('all'); // Clear quick filter selection
+  };
 
   // ------------------ Filters ------------------
   const finalBookings = useMemo(() => {
@@ -201,6 +274,11 @@ export default function Report() {
     } else if (endDate) {
       filterLabel = `Until ${new Date(endDate).toLocaleDateString()}`;
     }
+    
+    // Better labels for quick filters when set programmatically
+    if (activeFilter === 'today' && !startDate && !endDate) filterLabel = 'Today';
+    if (activeFilter === 'week' && !startDate && !endDate) filterLabel = 'This Week';
+    if (activeFilter === 'last-month' && !startDate && !endDate) filterLabel = 'Last Month';
 
     return {
       totalRevenue: totalRevenue.toLocaleString(),
@@ -209,7 +287,7 @@ export default function Report() {
       cancelledBookings: finalBookings.filter((b) => b.isCancelled).length,
       filterLabel,
     };
-  }, [finalBookings, startDate, endDate]);
+  }, [finalBookings, startDate, endDate, activeFilter]);
 
   // ------------------ Print ------------------
   const handlePrint = () => {
@@ -219,7 +297,6 @@ export default function Report() {
 
     const printTitle = `Movie Booking Report (${summaryStats.filterLabel})`;
     const printContent = document.getElementById("bookings-section")?.innerHTML;
-    const statsContent = document.getElementById("stats-grid")?.innerHTML;
 
     if (!printContent) return;
 
@@ -232,6 +309,7 @@ export default function Report() {
             <style>
               @page { size: A4; margin: 15mm; }
               body { font-family: sans-serif; padding: 0; color: #333; }
+              h1 { font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #1a202c; }
               h2 { font-size: 24px; color: #1a202c; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 20px; }
               table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
               th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
@@ -248,18 +326,21 @@ export default function Report() {
                 margin-bottom: 30px;
                 padding: 10px;
                 border: 1px solid #ddd;
+                border-radius: 8px;
               }
               .print-stat-card {
                 padding: 15px;
                 border: 1px solid #eee;
                 border-radius: 8px;
                 background-color: #f9f9f9;
+                text-align: center;
               }
               .print-stat-card h2 {
                 font-size: 16px;
                 color: #4c51bf;
                 margin-bottom: 5px;
                 border-bottom: none;
+                padding-bottom: 0;
               }
               .print-stat-card p {
                 font-size: 20px;
@@ -269,6 +350,7 @@ export default function Report() {
           </head>
           <body>
             <h1>${printTitle}</h1>
+            <p style="margin-top: -10px; margin-bottom: 20px; font-style: italic; color: #555;">Report Period: ${summaryStats.filterLabel}</p>
             <div id="stats-grid" class="print-stats-grid">
               <div class="print-stat-card"><h2>Total Revenue</h2><p style="color: #38a169;">PKR ${summaryStats.totalRevenue}</p></div>
               <div class="print-stat-card"><h2>Tickets Sold</h2><p style="color: #4299e1;">${summaryStats.totalTickets}</p></div>
@@ -297,6 +379,15 @@ export default function Report() {
       </div>
     );
   }
+
+  // Helper for button styling
+  const getButtonClass = (period: 'today' | 'week' | 'last-month' | 'all') =>
+    `px-4 py-2 text-sm font-semibold rounded-lg transition duration-200 flex-shrink-0 ${
+      activeFilter === period
+        ? 'bg-indigo-600 text-white shadow-lg'
+        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+    }`;
+
 
   // ------------------ UI ------------------
   return (
@@ -375,32 +466,32 @@ export default function Report() {
         <Card title="Revenue by Payment Method" icon={CreditCard}>
           <ResponsiveContainer width="100%" height={300}>
            <PieChart>
-  <Pie
-    data={revenueByPayment}
-    dataKey="value"
-    nameKey="method"
-    cx="50%"
-    cy="50%"
-    innerRadius={60}
-    outerRadius={100}
-    fill="#8884d8"
-    label={({ method, percent }) => `${method} (${((percent as number) * 100).toFixed(0)}%)`}
-    stroke="#111827"
-    strokeWidth={2}
-  >
-    {revenueByPayment.map((_, idx) => (
-      <Cell
-        key={`cell-${idx}`}
-        fill={['#6366f1', '#10b981', 'white', '#ef4444'][idx % 4]}
-      />
-    ))}
-  </Pie>
-  <Tooltip 
-    contentStyle={{ backgroundColor: "white", border: "none", borderRadius: "8px" }}
-    formatter={(value: number, name: string) => [`PKR ${value.toLocaleString()}`, name]}
-  />
-  <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ color: 'white' }} />
-</PieChart>
+             <Pie
+               data={revenueByPayment}
+               dataKey="value"
+               nameKey="method"
+               cx="50%"
+               cy="50%"
+               innerRadius={60}
+               outerRadius={100}
+               fill="#8884d8"
+               label={({ method, percent }) => `${method} (${((percent as number) * 100).toFixed(0)}%)`}
+               stroke="#111827"
+               strokeWidth={2}
+             >
+               {revenueByPayment.map((_, idx) => (
+                 <Cell
+                   key={`cell-${idx}`}
+                   fill={['#6366f1', '#10b981', 'white', '#ef4444'][idx % 4]}
+                 />
+               ))}
+             </Pie>
+             <Tooltip 
+               contentStyle={{ backgroundColor: "white", border: "none", borderRadius: "8px" }}
+               formatter={(value: number, name: string) => [`PKR ${value.toLocaleString()}`, name]}
+             />
+             <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ color: 'white' }} />
+          </PieChart>
 
           </ResponsiveContainer>
         </Card>
@@ -414,55 +505,87 @@ export default function Report() {
         </h2>
 
         {/* Filters and Search Bar */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-gray-900 rounded-xl border border-gray-800/70 print:hidden">
-            <div className='relative flex-grow'>
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-                <input
-                    type="text"
-                    placeholder="Search by Customer, Movie, or Room"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
-                        <X className="w-5 h-5" />
-                    </button>
-                )}
-            </div>
+        <div className="flex flex-col gap-4 mb-6 p-4 bg-gray-900 rounded-xl border border-gray-800/70 print:hidden">
+          
+          {/* Quick Filter Buttons */}
+          <div className="flex gap-3 justify-start overflow-x-auto pb-2">
+            <button
+              onClick={() => handleQuickFilter('today')}
+              className={getButtonClass('today')}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => handleQuickFilter('week')}
+              className={getButtonClass('week')}
+            >
+              This Week
+            </button>
+            <button
+              onClick={() => handleQuickFilter('last-month')}
+              className={getButtonClass('last-month')}
+            >
+              Last Month
+            </button>
+            <button
+              onClick={() => handleQuickFilter('all')}
+              className={getButtonClass('all')}
+            >
+              All Time
+            </button>
+          </div>
 
-            <div className='flex gap-4'>
-              <div className='relative'>
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
-                <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
-                    title="Start Date"
-                />
+          {/* Search and Date Inputs */}
+          <div className="flex flex-col sm:flex-row gap-4">
+              <div className='relative flex-grow'>
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <input
+                      type="text"
+                      placeholder="Search by Customer, Movie, or Room"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  />
+                  {search && (
+                      <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
+                          <X className="w-5 h-5" />
+                      </button>
+                  )}
               </div>
-              <div className='relative'>
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
-                <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
-                    title="End Date"
-                />
-              </div>
-            </div>
 
-            {(startDate || endDate) && (
-                <button
-                    onClick={() => { setStartDate(''); setEndDate(''); }}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold shadow-md transition duration-200"
-                >
-                    <Filter className="w-5 h-5" />
-                    Clear Filters
-                </button>
-            )}
+              <div className='flex gap-4'>
+                <div className='relative'>
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
+                  <input
+                      type="date"
+                      value={startDate}
+                      onChange={handleStartDateChange}
+                      className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
+                      title="Start Date"
+                  />
+                </div>
+                <div className='relative'>
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
+                  <input
+                      type="date"
+                      value={endDate}
+                      onChange={handleEndDateChange}
+                      className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
+                      title="End Date"
+                  />
+                </div>
+              </div>
+
+              {(startDate || endDate || search) && (
+                  <button
+                      onClick={() => { setStartDate(''); setEndDate(''); setSearch(''); setActiveFilter('all'); }}
+                      className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold shadow-md transition duration-200"
+                  >
+                      <Filter className="w-5 h-5" />
+                      Clear Filters
+                  </button>
+              )}
+          </div>
         </div>
 
 
@@ -475,80 +598,80 @@ export default function Report() {
                 <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Movie</th>
                 <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Room</th>
                 <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Seat</th>
-                        <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Showtime</th> 
+                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Showtime</th> 
                 <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Price (PKR)</th>
                 <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Payment</th>
                 <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Status</th>
               </tr>
             </thead>
-     
-    <tbody className="bg-gray-900 divide-y divide-gray-600 ">
-      {finalBookings.length === 0 ? (
-        <tr>
-          <td colSpan={9} className="p-4 text-center text-gray-500">
-            No bookings found for the applied filters.
-          </td>
-        </tr>
-      ) : (
-        finalBookings.map((b, index) => (
-          <tr
-            key={b._id}
-            className={`transition duration-150 ease-in-out ${
-              index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'
-            } hover:bg-gray-700/70`}
-          >
-            <td className="p-4 whitespace-nowrap font-medium text-gray-100">{b.customerName}</td>
-            <td className="p-4 whitespace-nowrap text-gray-300">{b.showtimeId?.movie?.title || '—'}</td>
-            <td className="p-4 whitespace-nowrap text-gray-300">{b.roomId?.name || '—'}</td>
-            <td className="p-4 whitespace-nowrap text-gray-300">{getSeatDisplay(b.seat)}</td>
-            <td className="p-4 whitespace-nowrap text-gray-300">
-              {b.showtimeId?.date && b.showtimeId?.time
-                ? `${new Date(b.showtimeId.date).toLocaleDateString()} ${b.showtimeId.time}`
-                : '—'}
-            </td>
-            <td className="p-4 whitespace-nowrap font-semibold text-green-400">
-              {b.totalPrice.toLocaleString()}
-            </td>
-        <td className="p-4 whitespace-nowrap">
-  {b.transactionId && b.bankName ? (
-    <>
-      {/* Normal screen view */}
-      <button
-        onClick={() =>
-          setSelectedBank({ transactionId: b.transactionId!, bankName: b.bankName! })
-        }
-        className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer bg-gray-800 p-2 rounded print:hidden"
-        title="View Bank Details"
-      >
-        View Details
-      </button>
-
-      {/* Print view (hidden on screen, shown only in print) */}
-      <span className="hidden print:inline text-black">
-        Bank
-      </span>
-    </>
-  ) : (
-    b.paymentMethod
-  )}
-</td>
-
-           
-            <td className="p-4 whitespace-nowrap">
-              {b.isCancelled ? (
-                <span className="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-red-900 text-red-300 border border-red-700">
-                  Cancelled
-                </span>
+        
+            <tbody className="bg-gray-900 divide-y divide-gray-600 ">
+              {finalBookings.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-4 text-center text-gray-500">
+                    No bookings found for the applied filters.
+                  </td>
+                </tr>
               ) : (
-                <span className="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-green-900 text-green-300 border border-green-700">
-                  Active
-                </span>
+                finalBookings.map((b, index) => (
+                  <tr
+                    key={b._id}
+                    className={`transition duration-150 ease-in-out ${
+                      index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'
+                    } hover:bg-gray-700/70`}
+                  >
+                    <td className="p-4 whitespace-nowrap font-medium text-gray-100">{b.customerName}</td>
+                    <td className="p-4 whitespace-nowrap text-gray-300">{b.showtimeId?.movie?.title || '—'}</td>
+                    <td className="p-4 whitespace-nowrap text-gray-300">{b.roomId?.name || '—'}</td>
+                    <td className="p-4 whitespace-nowrap text-gray-300">{getSeatDisplay(b.seat)}</td>
+                    <td className="p-4 whitespace-nowrap text-gray-300">
+                      {b.showtimeId?.date && b.showtimeId?.time
+                        ? `${new Date(b.showtimeId.date).toLocaleDateString()} ${b.showtimeId.time}`
+                        : '—'}
+                    </td>
+                    <td className="p-4 whitespace-nowrap font-semibold text-green-400">
+                      {b.totalPrice.toLocaleString()}
+                    </td>
+                    <td className="p-4 whitespace-nowrap">
+                      {b.transactionId && b.bankName ? (
+                        <>
+                          {/* Normal screen view */}
+                          <button
+                            onClick={() =>
+                              setSelectedBank({ transactionId: b.transactionId!, bankName: b.bankName! })
+                            }
+                            className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer bg-gray-800 p-2 rounded print:hidden"
+                            title="View Bank Details"
+                          >
+                            View Details
+                          </button>
+
+                          {/* Print view (hidden on screen, shown only in print) */}
+                          <span className="hidden print:inline text-black">
+                            {b.bankName} (ID: {b.transactionId})
+                          </span>
+                        </>
+                      ) : (
+                        b.paymentMethod
+                      )}
+                    </td>
+
+                    
+                    <td className="p-4 whitespace-nowrap">
+                      {b.isCancelled ? (
+                        <span className="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-red-900 text-red-300 border border-red-700">
+                          Cancelled
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-green-900 text-green-300 border border-green-700">
+                          Active
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
-            </td>
-          </tr>
-        ))
-      )}
-    </tbody>
+            </tbody>
           </table>
         </div>
       </div>
