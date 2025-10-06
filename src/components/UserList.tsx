@@ -242,7 +242,7 @@ const handleDelete = async (id: string) => {
                 </button>
                 <button
                   className={`px-4 py-2 rounded text-white font-bold cursor-pointer ${
-                    saving ? "bg-green-400" : "bg-green-600 hover:bg-green-700"
+                    saving ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
                   }`}
                   onClick={handleSave}
                   disabled={saving}

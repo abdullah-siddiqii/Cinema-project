@@ -22,7 +22,7 @@ export default function ReportPage() {
             theme="dark"
           />
           <Sidebar />
-          <main className="flex-1 bg-gray-100 h-[calc(100vh-79px)] scrollbar-y">
+          <main className="flex-1 bg-gray-950 h-[calc(100vh-79px)] scrollbar-y">
             <Report />
           </main>
         </div>

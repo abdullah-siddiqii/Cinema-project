@@ -1,9 +1,9 @@
-/* ===================== */
-/* Tailwind Import (if using Tailwind) */
+/* ========================================================= */
+/* ✅ Tailwind Import */
 @import "tailwindcss";
 
-/* ===================== */
-/* Root Variables */
+/* ========================================================= */
+/* 🎨 Root Theme Variables */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,6 +12,7 @@
   --scrollbar-track: #1a1818;
 }
 
+/* 🌙 Auto Dark Mode */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -19,21 +20,22 @@
   }
 }
 
-/* ===================== */
-/* Body */
+/* ========================================================= */
+/* 🧍 Body Base Styles */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   margin: 0;
   padding: 0;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* ===================== */
-/* Loader */
+/* ========================================================= */
+/* 🔄 Loader Animation */
 .loader {
-  border: 4px solid #f3f3f3; /* Light grey */
-  border-top: 4px solid #3498db; /* Blue */
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -48,16 +50,16 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* ===================== */
-/* Scrollbar (Global Thin Yellow) */
+/* ========================================================= */
+/* 🟡 Global Scrollbar */
 .scrollbar-y {
   overflow-y: auto;
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 .scrollbar-y::-webkit-scrollbar {
-  width: 4px; /* Chrome, Edge, Safari */
+  width: 4px;
 }
 
 .scrollbar-y::-webkit-scrollbar-track {
@@ -75,13 +77,13 @@ body {
   background-color: var(--scrollbar-thumb-hover);
 }
 
-/* ===================== */
-/* Toast Notifications */
+/* ========================================================= */
+/* 🔔 Toast Notifications (React-Toastify) */
 .Toastify__toast {
   background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
   color: #f5f5f5;
   font-weight: 600;
-  border: 1px solid #ff1e1e; /* cinema vibe */
+  border: 1px solid #ff1e1e;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(255, 30, 30, 0.4);
 }
@@ -115,8 +117,8 @@ body {
   background: #ff1e1e;
 }
 
-/* ===================== */
-/* Image Placeholder / Alt */
+/* ========================================================= */
+/* 🖼 Image Placeholder (for missing posters) */
 .alt {
   display: block;
   width: 270px;
@@ -128,36 +130,167 @@ body {
   color: #aaa;
   font-size: 14px;
   text-align: center;
-  line-height: 400px; /* center text vertically */
+  line-height: 400px;
 }
 
-/* ===================== */
+/* ========================================================= */
+/* ✨ Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 @keyframes zoomIn {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
 @keyframes shine {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 1s ease forwards;
-}
-.animate-zoomIn {
-  animation: zoomIn 1s ease forwards;
-}
-.animate-shine {
-  animation: shine 2s infinite;
+.animate-fadeIn { animation: fadeIn 1s ease forwards; }
+.animate-zoomIn { animation: zoomIn 1s ease forwards; }
+.animate-shine { animation: shine 2s infinite; }
+
+/* ========================================================= */
+/* 📅 React-Date-Range Dark Theme Override */
+.rdrDefinedRangesWrapper {
+  background-color: #171f31 !important;
+  color: #E5E7EB !important;
+  border: 1px solid #4B5563 !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+              0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
 }
 
+.rdrCalendar,
+.rdrMonth,
+.rdrMonths,
+.rdrMonthsVertical,
+.rdrMonthAndYearPickers {
+  background: #1F2937 !important;
+  color: #E5E7EB !important;
+}
 
-/* ===================== */
-/* Links */@media print {
+.rdrDateDisplayWrapper {
+  background-color: #1F2937 !important;
+  border-bottom: none !important;
+}
+
+.rdrDateDisplayItem {
+  background-color: #1e242f !important;
+  border: 1px solid #4B5563 !important;
+  color: #E5E7EB !important;
+  box-shadow: none !important;
+}
+
+.rdrDateDisplayItem input {
+  color: #E5E7EB !important;
+  background-color: transparent !important;
+}
+
+.rdrMonthAndYearWrapper {
+  background: #1F2937 !important;
+  color: #E5E7EB !important;
+  border-bottom: 1px solid #4B5563 !important;
+}
+
+.rdrNextPrevButton {
+  background: #1e1d1d !important;
+  color: #E5E7EB !important;
+}
+.rdrNextPrevButton i{
+  color: #E5E7EB !important;
+}
+
+.rdrMonthAndYearPickers select {
+  background: #212731 !important;
+  color: #E5E7EB !important;
+  border: 1px solid #4B5563 !important;
+}
+
+.rdrStaticRanges,
+.rdrInputRanges {
+  background: #17202e !important;
+  border-right: 1px solid #374151 !important;
+  border-bottom: 1px solid #374151 !important;
+  padding: 1rem 1rem 1rem 1rem !important;
+}
+
+.rdrStaticRange {
+    background: #17202e !important;
+
+  color: #E5E7EB !important;
+  border: none !important;
+  border-bottom: 1px solid #1F2937 !important;
+
+}
+
+.rdrStaticRangeLabel:hover {
+  background-color: #1F2937 !important;
+
+}
+
+.rdrStaticRangeLabel {
+  background-color: #171f31 !important;
+  border: 2px solid #374151 !important;
+  border-radius: 2rem !important;
+  margin-top: 0.2rem !important;
+}
+.rdrStaticRangeSelected .rdrStaticRangeLabel {
+  background-color: #0a0b0d !important;
+  color: #FFFFFF !important;
+} 
+.rdrCalendarWrapper{
+  background-color: #222939 !important;
+
+  color: #FFFFFF !important;
+}
+
+.rdrStaticRange.rdrActive {
+  background: #000000 !important;
+}
+
+.rdrInputRangeInput {
+  background: #374151 !important;
+  color: #E5E7EB !important;
+  border: 1px solid #4B5563 !important;
+}
+
+.rdrWeekDay {
+  color: #9CA3AF !important;
+  font-weight: bold !important;
+}
+
+.rdrDayNumber span {
+  color: #E5E7EB !important;
+}
+
+.rdrDayPassive .rdrDayNumber span {
+  color: #4B5563 !important;
+}
+
+.rdrDayHovered,
+.rdrInRange,
+.rdrStartEdge,
+.rdrEndEdge {
+  background: #4F46E5 !important;
+  color: #FFFFFF !important;
+}
+
+.rdrDay:not(.rdrDisabled) .rdrDayNumber:hover {
+  background-color: transparent !important;
+}
+
+.rdrDay:not(.rdrDisabled) .rdrDayNumber:hover span {
+  background-color: transparent !important;
+}
+
+/* ========================================================= */
+/* 🖨 Print Mode (Clean Black-on-White Report) */
+@media print {
   body {
     background: white !important;
     color: black !important;
@@ -194,6 +327,3 @@ body {
     color: black !important;
   }
 }
-
-
-
