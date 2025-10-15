@@ -346,7 +346,7 @@ const handleSaveEdit = async () => {
           <p className="text-center text-xl py-10">⏳ Loading showtimes...</p>
         ) : showtimes.length === 0 ? (
           <p className="text-center text-xl py-10 text-gray-400">
-            No showtimes available for {filter.toLowerCase()} matching: "{searchTerm}".
+           No showtimes available for {filter.toLowerCase()} matching: {searchTerm}.
           </p>
         ) : (
           <>
