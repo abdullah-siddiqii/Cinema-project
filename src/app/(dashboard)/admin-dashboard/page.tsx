@@ -97,31 +97,31 @@ export default function AdminDashboard() {
   const handleRetry = () => fetchStats();
 
   // --- LOADING STATE ---
-  // if (loading && !stats) return (
+  if (error || !stats) return (
+    <HomeWrapper>
+      <div className="flex items-center justify-center h-[calc(100vh-79px)] bg-gradient-to-br from-black to-gray-950">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-yellow-500 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-300 text-xl font-light">Loading Dashboard...</p>
+        </div>
+      </div>
+    </HomeWrapper>
+  )
+
+  // --- ERROR STATE ---
+  // if (error || !stats) return (
   //   <HomeWrapper>
   //     <div className="flex items-center justify-center h-[calc(100vh-79px)] bg-gradient-to-br from-gray-900 to-gray-800">
-  //       <div className="text-center">
-  //         <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-500 border-t-transparent mx-auto mb-4"></div>
-  //         <p className="text-gray-300 text-xl font-light">Loading Dashboard...</p>
+  //       <div className="text-center p-8 bg-gray-800/50 rounded-2xl backdrop-blur-sm border border-gray-700">
+  //         <div className="text-6xl mb-4">⚠️</div>
+  //         <p className="text-red-400 text-xl mb-4 font-medium">{error || 'Failed to load statistics.'}</p>
+  //         <button onClick={handleRetry} className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 font-medium shadow-lg hover:shadow-xl">
+  //           Try Again
+  //         </button>
   //       </div>
   //     </div>
   //   </HomeWrapper>
   // );
-
-  // --- ERROR STATE ---
-  if (error || !stats) return (
-    <HomeWrapper>
-      <div className="flex items-center justify-center h-[calc(100vh-79px)] bg-gradient-to-br from-gray-900 to-gray-800">
-        <div className="text-center p-8 bg-gray-800/50 rounded-2xl backdrop-blur-sm border border-gray-700">
-          <div className="text-6xl mb-4">⚠️</div>
-          <p className="text-red-400 text-xl mb-4 font-medium">{error || 'Failed to load statistics.'}</p>
-          <button onClick={handleRetry} className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 font-medium shadow-lg hover:shadow-xl">
-            Try Again
-          </button>
-        </div>
-      </div>
-    </HomeWrapper>
-  );
 
   // Destructure after the checks ensure stats is not null
   const { bookingsOverTime, revenueByMovie, topCustomers, cinemaProgress } = stats;
