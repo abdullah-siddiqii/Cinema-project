@@ -222,11 +222,12 @@ export default function EditMovieModal({ movie, isOpen, onClose, onSave }: EditM
           <AnimatePresence>
             {showPosterPopup && posterPath && (
               <motion.div
-                className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+                className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setShowPosterPopup(false)}
+                key="poster-popup"
               >
                 <motion.img
                   src={posterPath}

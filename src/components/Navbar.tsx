@@ -28,7 +28,7 @@ export default function Navbar() {
     // Redirect after logout
     toast.success("Logout successful", { autoClose: 1200 });
     setTimeout(() => {
-      router.replace("/login");
+      router.push("/login");
     },1500);
   } catch (err) {
     console.error("Logout error:", err);

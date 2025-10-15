@@ -9,7 +9,9 @@ import ReactECharts from 'echarts-for-react';
 type StatsData = {
   totalBookings: number;
   totalBookingsToday: number;
+  cancelledRevenue: number;
   totalRevenue: number;
+  cancelledBookings: number;
   activeMovies: number;
   bookingsOverTime: { date: string; bookings: number }[];
   revenueByMovie: { movie: string; revenue: number }[];
@@ -275,12 +277,42 @@ export default function AdminDashboard() {
   // STATS CARDS DATA
   // --------------------------------------------------
   const statsCards = [
-    // Using a more meaningful icon for bookings
-    { title: 'Total Bookings', value: stats.totalBookings.toLocaleString(), color: 'from-green-500 to-emerald-500', icon: '🎟️', trend: '+12%', trendColor: 'text-green-400 bg-green-500/20' },
-    { title: 'Bookings Today', value: stats.totalBookingsToday.toLocaleString(), color: 'from-blue-500 to-cyan-500', icon: '📅', trend: '+5%', trendColor: 'text-cyan-400 bg-cyan-500/20' },
-    { title: 'Total Revenue', value: `Rs ${stats.totalRevenue.toLocaleString()}`, color: 'from-purple-500 to-indigo-500', icon: '💰', trend: '+18%', trendColor: 'text-indigo-400 bg-indigo-500/20' },
-    { title: 'Active Movies', value: stats.activeMovies.toString(), color: 'from-orange-500 to-amber-500', icon: '🎬', trend: '+2', trendColor: 'text-amber-400 bg-amber-500/20' },
-  ];
+  {
+    title: 'Total Bookings',
+    value: stats.totalBookings.toLocaleString(),
+    canceled: `(${stats.cancelledBookings.toLocaleString()}) Canceled`,
+    color: 'from-green-500 to-emerald-500',
+    icon: '🎟️',
+    trend: '+12%',
+    trendColor: 'text-green-400 bg-green-500/20',
+  },
+  {
+    title: 'Bookings Today',
+    value: stats.totalBookingsToday.toLocaleString(),
+    color: 'from-blue-500 to-cyan-500',
+    icon: '📅',
+    trend: '+5%',
+    trendColor: 'text-cyan-400 bg-cyan-500/20',
+  },
+  {
+    title: 'Total Revenue',
+    value: `Rs ${stats.totalRevenue.toLocaleString()}`,
+    canceled: `(Rs ${stats.cancelledRevenue.toLocaleString()}) Canceled Revenue`,
+    color: 'from-purple-500 to-indigo-500',
+    icon: '💰',
+    trend: '+18%',
+    trendColor: 'text-indigo-400 bg-indigo-500/20',
+  },
+  {
+    title: 'Active Movies',
+    value: stats.activeMovies.toString(),
+    color: 'from-orange-500 to-amber-500',
+    icon: '🎬',
+    trend: '+2',
+    trendColor: 'text-amber-400 bg-amber-500/20',
+  },
+];
+
 
   // --------------------------------------------------
   // RENDER WITH BACKGROUND IMAGE FIX
@@ -302,22 +334,47 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 font-light">Real-time insights and performance metrics at a glance.</p>
               </div>
 
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                {statsCards.map((card, index) => (
-                  <div key={index} className="group relative bg-gray-800/60 backdrop-blur-lg rounded-2xl p-6 border border-gray-700/50 transition-all duration-300 shadow-xl hover:shadow-indigo-500/20 hover:scale-[1.02]">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-2xl blur-lg`} />
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-3xl">{card.icon}</span>
-                        <span className={`text-xs ${card.trendColor} px-3 py-1 rounded-full font-medium`}>{card.trend}</span>
-                      </div>
-                      <p className="text-gray-400 text-sm font-medium mb-1">{card.title}</p>
-                      <p className="text-3xl font-extrabold bg-gradient-to-r bg-clip-text text-transparent from-white to-gray-300 tracking-tight">{card.value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+         {/* Stats Cards */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+  {statsCards.map((card, index) => (
+    <div
+      key={index}
+      className="group relative bg-gray-800/60 backdrop-blur-lg rounded-2xl p-6 border border-gray-700/50 transition-all duration-300 shadow-xl hover:shadow-indigo-500/20 hover:scale-[1.02]"
+    >
+      {/* Hover Gradient Overlay */}
+      <div
+        className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-2xl blur-lg`}
+      />
+
+      {/* Card Content */}
+      <div className="relative z-10">
+        {/* Icon + Trend */}
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-3xl">{card.icon}</span>
+          <span
+            className={`text-xs ${card.trendColor} px-3 py-1 rounded-full font-medium`}
+          >
+            {card.trend}
+          </span>
+        </div>
+
+        {/* Title */}
+        <p className="text-gray-400 text-sm font-medium mb-1">{card.title}</p>
+
+        {/* Main Value */}
+        <p className="text-3xl font-extrabold bg-gradient-to-r bg-clip-text text-transparent from-white to-gray-300 tracking-tight">
+          {card.value}
+        </p>
+
+        {/* Optional canceled value */}
+        {card.canceled && (
+          <p className="text-sm text-red-400 mt-1">{card.canceled}</p>
+        )}
+      </div>
+    </div>
+  ))}
+</div>
+
 
               {/* Charts Grid (Polished) */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

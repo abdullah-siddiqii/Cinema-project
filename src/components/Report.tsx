@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useMemo, useLayoutEffect, useCallback, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { DateRangePicker } from 'react-date-range';
-import 'react-date-range/dist/styles.css'; 
-import 'react-date-range/dist/theme/default.css'; 
-
-
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
+import { addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
 import {
   LineChart,
   Line,
@@ -30,11 +30,26 @@ import {
   ClipboardList,
   Printer,
   Banknote,
-  Calendar, 
-  Filter, 
+  Calendar,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown, // Add this import
 } from 'lucide-react';
 
 // ------------------ Types ------------------
+
+type BookingResponse = {
+  success: boolean;
+  page: number;
+  limit: number;
+  totalBookings: number; 
+  totalPages: number;
+  results: number;
+  filter: string;
+  bookings: Booking[];
+};
+
 type SeatObject = {
   seatNumber?: string;
   name?: string;
@@ -66,16 +81,16 @@ const Card = ({
   icon: React.ElementType;
   children: React.ReactNode;
 }) => (
-  <div className="p-6 bg-gray-900 rounded-xl shadow-2xl border border-gray-800/70 transition hover:border-indigo-600/50 print:p-0 print:border-none print:shadow-none print:bg-white print:text-gray-900">
-    <h2 className="text-xl font-extrabold mb-4 flex items-center gap-3 text-indigo-400 print:text-gray-800 print:border-b print:border-gray-300 print:pb-2 print:mb-2">
-      <Icon className="w-6 h-6 text-indigo-500 print:text-gray-500" />
+  <div className="p-6 bg-gray-900 rounded-2xl shadow-xl border border-gray-800 transition hover:border-indigo-500/70 print:p-0 print:border-none print:shadow-none print:bg-white print:text-gray-900">
+    <h2 className="text-lg font-bold mb-3 flex items-center gap-3 text-indigo-400 print:text-gray-800 print:border-b print:border-gray-300 print:pb-2 print:mb-2">
+      <Icon className="w-5 h-5 text-indigo-500 print:text-gray-500" />
       {title}
     </h2>
     {children}
   </div>
 );
 
-// ------------------ Helpers ------------------
+// ------------------ Global Helpers ------------------
 const getSeatDisplay = (seat: Booking['seat']) => {
   if (typeof seat === 'string') return seat;
   if (seat && typeof seat === 'object') {
@@ -86,57 +101,23 @@ const getSeatDisplay = (seat: Booking['seat']) => {
   return '—';
 };
 
-/**
- * Helper to get an ISO date string for a specific date (YYYY-MM-DD).
- */
 const getISODate = (date: Date): string => {
   return date.toISOString().split('T')[0];
 };
 
-/**
- * Helper to calculate start/end dates for quick filters.
- */
-const getFilterDates = (period: 'today' | 'week' | 'last-month' | 'all'): [Date | null, Date | null] => {
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
-  
-  // Reset time to start of day for consistency
-  now.setHours(0, 0, 0, 0);
-
-  switch (period) {
-    case 'today':
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return [start, end];
-    case 'week':
-      // Start of the week (Sunday is 0, Monday is 1...):
-      const day = now.getDay();
-      start.setDate(now.getDate() - day);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999); // End of today
-      return [start, end];
-    case 'last-month':
-      // Start of Last Month
-      start.setDate(1); 
-      start.setMonth(start.getMonth() - 1); 
-      start.setHours(0, 0, 0, 0);
-
-      // End of Last Month
-      end.setDate(1); 
-      end.setDate(end.getDate() - 1); 
-      end.setHours(23, 59, 59, 999);
-      
-      return [start, end];
-    case 'all':
-    default:
-      return [null, null]; // Clears filters
-  }
-};
-
 // ------------------ Main Component ------------------
 export default function Report() {
+  const [dateRange, setDateRange] = useState([
+    { 
+      startDate: new Date(2000, 0, 1), 
+      endDate: new Date(), 
+      key: 'selection' 
+    },
+  ]);
+  
+  // ------------------ State Management ------------------
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [summaryBookings, setSummaryBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedBank, setSelectedBank] = useState<{
@@ -144,666 +125,722 @@ export default function Report() {
     bankName: string;
   } | null>(null);
 
-  // State to control date picker visibility
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  // State to control upward/downward opening
-  const [isUpward, setIsUpward] = useState(false);
-  // Ref for click-outside detection and positioning
-  const pickerRef = useRef<HTMLDivElement>(null); 
+  // Pagination & Data Size State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10); 
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalBookingsCount, setTotalBookingsCount] = useState(0); 
 
-  // Quick Filter State - tracks which button is active
-  const [activeFilter, setActiveFilter] = useState<'today' | 'week' | 'last-month' | 'all'>('all');
-
-  // Date Filters
-  const [dateRange ,setDateRange] = useState<{
-    startDate: Date | null;
-    endDate: Date | null;
-  }>({
-    startDate: null, 
-    endDate: null,
-  });
-
-  const [chartKey, setChartKey] = useState(0);
-
-  // Handler for quick filter buttons
-  const handleQuickFilter = useCallback((period: 'today' | 'week' | 'last-month' | 'all') => {
-    setActiveFilter(period);
-    const [start, end] = getFilterDates(period);
-    setDateRange({ startDate: start, endDate: end });
-    setSearch(''); // Clear search on quick filter change
-    setShowDatePicker(false); // Close date picker when a quick filter is selected
-  }, []);
+  // Filter State
+  const [activeFilter, setActiveFilter] = useState<'Today' | 'This Week' | 'This Month' | 'All Time' | 'Custom'>('All Time');
   
-  // Set default filter to 'All Time' on initial load
-  useEffect(() => {
-    handleQuickFilter('all');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // UI State
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showLimitDropdown, setShowLimitDropdown] = useState(false);
+  const [chartKey, setChartKey] = useState(0);
+  const [datePickerPosition, setDatePickerPosition] = useState<'below' | 'above'>('below');
+  const printRef = useRef<HTMLDivElement>(null);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+  const dateButtonRef = useRef<HTMLButtonElement>(null);
+  const limitDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Debounce for Search input 
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const lastFetchedSearch = useRef(''); 
+  const lastFetchedFilter = useRef(activeFilter); 
 
-  // Fetch Bookings
+  // Available limit options
+  const limitOptions = [10, 25, 50, 100, 250, 500, 1000];
+
+  // Filter handlers
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const res = await fetch(
-          'https://abdullah-test.whitescastle.com/api/bookings'
-        );
-        const data = await res.json();
-        setBookings(data);
-      } catch (err) {
-        console.error('Error fetching bookings:', err);
-      } finally {
-        setLoading(false);
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Calculate date picker position and close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close date picker
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setShowDatePicker(false);
+      }
+      // Close limit dropdown
+      if (limitDropdownRef.current && !limitDropdownRef.current.contains(event.target as Node)) {
+        setShowLimitDropdown(false);
       }
     };
-    fetchBookings();
-  }, []);
 
-  // Reset charts when filters change (using primitive timestamps)
-  useLayoutEffect(() => {
-    setChartKey((prev) => prev + 1);
-  }, [dateRange.startDate?.getTime(), dateRange.endDate?.getTime()]);
+    const calculatePosition = () => {
+      if (dateButtonRef.current && showDatePicker) {
+        const buttonRect = dateButtonRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - buttonRect.bottom;
+        const spaceAbove = buttonRect.top;
+        const datePickerHeight = 400; // Approximate height of date picker
+        
+        if (spaceBelow < datePickerHeight && spaceAbove > spaceBelow) {
+          setDatePickerPosition('above');
+        } else {
+          setDatePickerPosition('below');
+        }
+      }
+    };
 
-  // Handler for DateRangePicker change
+    if (showDatePicker || showLimitDropdown) {
+      if (showDatePicker) {
+        calculatePosition();
+      }
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('resize', calculatePosition);
+      window.addEventListener('scroll', calculatePosition);
+      
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('resize', calculatePosition);
+        window.removeEventListener('scroll', calculatePosition);
+      };
+    }
+  }, [showDatePicker, showLimitDropdown]);
+
+  // ------------------ Helper Functions ------------------
+
+  // Format date for display
+  const formatDateRangeDisplay = () => {
+    if (activeFilter === 'Custom' && dateRange[0].startDate && dateRange[0].endDate) {
+      const start = format(dateRange[0].startDate, 'MMM dd, yyyy');
+      const end = format(dateRange[0].endDate, 'MMM dd, yyyy');
+      return `${start} - ${end}`;
+    }
+    return activeFilter;
+  };
+
+  const getButtonClass = (period: 'Today' | 'This Week' | 'This Month' | 'All Time') =>
+    `px-4 py-2 text-sm font-semibold rounded-full transition duration-200 flex-shrink-0 border ${
+      activeFilter === period
+      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md hover:bg-indigo-700'
+      : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700 hover:text-white'
+    }`;
+
+  // ------------------ Handlers ------------------
+
+  const handleQuickFilter = (period: 'Today' | 'This Week' | 'This Month' | 'All Time') => {
+    setActiveFilter(period);
+    const today = new Date();
+
+    switch (period) {
+      case 'Today':
+        setDateRange([{ 
+          startDate: today, 
+          endDate: today, 
+          key: 'selection' 
+        }]);
+        break;
+      case 'This Week':
+        // This week starting from today (Monday to Sunday)
+        setDateRange([{ 
+          startDate: today, 
+          endDate: addDays(today, 6), 
+          key: 'selection' 
+        }]);
+        break;
+      case 'This Month':
+        setDateRange([{ 
+          startDate: startOfMonth(today), 
+          endDate: endOfMonth(today), 
+          key: 'selection' 
+        }]);
+        break;
+      case 'All Time':
+        setDateRange([{ 
+          startDate: new Date(2000, 0, 1), 
+          endDate: today, 
+          key: 'selection' 
+        }]);
+        break;
+    }
+    
+    setShowDatePicker(false);
+    setCurrentPage(1);
+    setSearch('');
+    setDebouncedSearch('');
+  };
+
   const handleDateRangeChange = (ranges: any) => {
-    const { selection } = ranges;
-    
-    // Set start date to start of day
-    const newStartDate = selection.startDate ? new Date(selection.startDate) : null;
-    if (newStartDate) newStartDate.setHours(0, 0, 0, 0);
+    const selection = ranges.selection;
+    setDateRange([
+      {
+        startDate: selection.startDate || new Date(),
+        endDate: selection.endDate || new Date(),
+        key: 'selection',
+      },
+    ]);
+    // Automatically apply custom filter when date range changes
+    setActiveFilter('Custom');
+    setCurrentPage(1);
+  };
 
-    // Set end date to end of day
-    const newEndDate = selection.endDate ? new Date(selection.endDate) : null;
-    if (newEndDate) newEndDate.setHours(23, 59, 59, 999);
+  const handleDatePickerToggle = () => {
+    if (!showDatePicker) {
+      // Calculate position before opening
+      if (dateButtonRef.current) {
+        const buttonRect = dateButtonRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - buttonRect.bottom;
+        const spaceAbove = buttonRect.top;
+        const datePickerHeight = 400;
+        
+        if (spaceBelow < datePickerHeight && spaceAbove > spaceBelow) {
+          setDatePickerPosition('above');
+        } else {
+          setDatePickerPosition('below');
+        }
+      }
+    }
+    setShowDatePicker(!showDatePicker);
+  };
 
-    setDateRange({
-      startDate: newStartDate,
-      endDate: newEndDate,
-    });
-    
-    // Clear quick filter selection
-    if (newStartDate !== null || newEndDate !== null) {
-      setActiveFilter('all'); 
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setCurrentPage(1); // Reset to first page when changing limit
+    setShowLimitDropdown(false);
+  };
+
+  const handleLimitDropdownToggle = () => {
+    setShowLimitDropdown(!showLimitDropdown);
+  };
+
+  // Handler for pagination
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
     }
   };
 
-  // --- NEW LOGIC FOR DATE PICKER POSITIONING ---
-  // Use layout effect to check available space on open
-  useLayoutEffect(() => {
-    if (showDatePicker && pickerRef.current) {
-      const pickerElement = pickerRef.current;
-      const rect = pickerElement.getBoundingClientRect();
-      // Estimate the height of the picker (it's roughly 340px)
-      const pickerHeight = 350; 
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // ------------------ Data Fetching Functions ------------------
+
+  // Function to build API parameters
+  const buildApiParams = (forSummary: boolean = false) => {
+    const params = new URLSearchParams();
+    
+    if (!forSummary) {
+      params.append('page', currentPage.toString());
+      params.append('limit', limit.toString());
+    } else {
+      params.append('limit', '1000');
+      params.append('page', '1');
+    }
+    
+    // Add date range to API parameters - ALWAYS send dates
+    if (dateRange[0].startDate && dateRange[0].endDate) {
+      params.append('startDate', getISODate(dateRange[0].startDate));
+      params.append('endDate', getISODate(dateRange[0].endDate));
+    }
+    
+    // Add search term if available
+    if (debouncedSearch) {
+      params.append('search', debouncedSearch);
+    }
+    
+    // Add active filter name for tracking
+    if (activeFilter !== 'Custom') {
+      params.append('filter', activeFilter);
+    } else {
+      params.append('filter', 'Custom');
+    }
+
+    console.log('API Params:', params.toString()); // Debug log
+
+    return params;
+  };
+
+  // Separate function for fetching the summary data
+  const fetchSummaryBookings = useCallback(async () => {
+    const params = buildApiParams(true);
+    const apiUrl = `https://abdullah-test.whitescastle.com/api/bookings?${params.toString()}`;
+
+    try {
+      const res = await fetch(apiUrl);
+      const data: BookingResponse = await res.json();
       
-      // Calculate available space below and above the trigger button
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-
-      // If space below is less than the picker height AND space above is greater or equal
-      if (spaceBelow < pickerHeight && spaceAbove >= pickerHeight) {
-        setIsUpward(true);
+      if (data.success) {
+        setSummaryBookings(data.bookings);
       } else {
-        setIsUpward(false);
+        setSummaryBookings([]);
+        console.error('API Summary Error:', data);
       }
+    } catch (err) {
+      console.error('Error fetching summary bookings:', err);
+      setSummaryBookings([]);
     }
-  }, [showDatePicker]); // Only run when the picker opens
+  }, [activeFilter, debouncedSearch, dateRange]);
 
-  // --- NEW LOGIC FOR CLICK OUTSIDE CLOSING ---
+  // Separate function for fetching the paginated data
+  const fetchPaginatedBookings = useCallback(async () => {
+    setLoading(true);
+
+    const params = buildApiParams(false);
+    const apiUrl = `https://abdullah-test.whitescastle.com/api/bookings?${params.toString()}`;
+
+    try {
+      const res = await fetch(apiUrl);
+      const data: BookingResponse = await res.json();
+
+      if (data.success) {
+        setBookings(data.bookings);
+        setTotalPages(data.totalPages);
+        setTotalBookingsCount(data.totalBookings);
+        setCurrentPage(data.page); 
+        lastFetchedSearch.current = debouncedSearch;
+        lastFetchedFilter.current = activeFilter;
+      } else {
+        console.error('API Error:', data);
+        setBookings([]);
+        setTotalPages(1);
+        setTotalBookingsCount(0);
+      }
+    } catch (err) {
+      console.error('Error fetching paginated bookings:', err);
+      setBookings([]);
+      setTotalPages(1);
+      setTotalBookingsCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeFilter, debouncedSearch, currentPage, limit, dateRange]);
+
+  // ------------------ Primary Fetch Effect ------------------
+  // Load data automatically when component mounts
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        showDatePicker &&
-        pickerRef.current &&
-        !pickerRef.current.contains(event.target as Node)
-      ) {
-        setShowDatePicker(false);
-      }
-    }
+    fetchPaginatedBookings();
+    fetchSummaryBookings();
+  }, []);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showDatePicker]);
+  // Fetch data when filters change
+  useEffect(() => {
+    fetchPaginatedBookings();
+    fetchSummaryBookings();
+  }, [activeFilter, debouncedSearch, dateRange, currentPage, limit]);
 
+  // ------------------ Data Processing ------------------
+  
+  const finalBookings = bookings; 
+  const chartAndSummaryData = summaryBookings;
 
-  // ------------------ Filters ------------------
-  const finalBookings = useMemo(() => {
-    let startTimestamp = 0;
-    if (dateRange.startDate) {
-      startTimestamp = dateRange.startDate.getTime();
-    }
+  useLayoutEffect(() => {
+     setChartKey((prev) => prev + 1); 
+  }, [chartAndSummaryData]);
 
-    let endTimestamp = Infinity;
-    if (dateRange.endDate) {
-      endTimestamp = dateRange.endDate.getTime();
-    }
-
-    const filteredByDate = bookings.filter((b) => {
-      const bookingTimestamp = new Date(b.createdAt).getTime();
-      const isAfterStart = startTimestamp === 0 || bookingTimestamp >= startTimestamp;
-      const isBeforeEnd = endTimestamp === Infinity || bookingTimestamp <= endTimestamp;
-      return isAfterStart && isBeforeEnd;
-    });
-
-    return filteredByDate.filter((b) => {
-      const searchLower = search.toLowerCase();
-      return (
-        b.customerName.toLowerCase().includes(searchLower) ||
-        b.showtimeId?.movie?.title?.toLowerCase().includes(searchLower) ||
-        b.roomId?.name?.toLowerCase().includes(searchLower)
-      );
-    });
-  }, [bookings, search, dateRange.startDate, dateRange.endDate]);
-
-  // ------------------ Revenue Data ------------------
   const revenueOverTime = useMemo(() => {
     const grouped: Record<string, number> = {};
-    finalBookings.forEach((b) => {
-      if (!b.isCancelled) {
-        const date = getISODate(new Date(b.createdAt));
-        grouped[date] = (grouped[date] || 0) + b.totalPrice;
-      }
+    chartAndSummaryData.forEach((b) => {
+        if (!b.isCancelled) {
+            const date = getISODate(new Date(b.createdAt));
+            grouped[date] = (grouped[date] || 0) + b.totalPrice;
+        }
     });
 
     return Object.entries(grouped)
-      .map(([isoDate, revenue]) => ({
-        date: new Date(isoDate).toLocaleDateString(), 
-        revenue,
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [finalBookings]);
+        .map(([isoDate, revenue]) => ({
+            date: new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+            revenue,
+            sortDate: new Date(isoDate).getTime()
+        }))
+        .sort((a, b) => a.sortDate - b.sortDate);
+  }, [chartAndSummaryData]);
 
   const revenueByPayment = useMemo(() => {
     const grouped: Record<string, number> = {};
-    finalBookings.forEach((b) => {
-      if (!b.isCancelled) {
-        grouped[b.paymentMethod] =
-          (grouped[b.paymentMethod] || 0) + b.totalPrice;
-      }
+    chartAndSummaryData.forEach((b) => {
+        if (!b.isCancelled) {
+            grouped[b.paymentMethod] = (grouped[b.paymentMethod] || 0) + b.totalPrice;
+        }
     });
-    return Object.entries(grouped).map(([method, value]) => ({
-      method,
-      value,
-    }));
-  }, [finalBookings]);
+    return Object.entries(grouped)
+        .filter(([, value]) => value > 0)
+        .map(([method, value]) => ({ method, value }));
+  }, [chartAndSummaryData]);const summaryStats = useMemo(() => {
+  const allBookingsForFilter = chartAndSummaryData;
 
-  // ------------------ Summary ------------------
-  const summaryStats = useMemo(() => {
-    const activeBookings = finalBookings.filter((b) => !b.isCancelled);
-    const totalRevenue = activeBookings.reduce(
-      (sum, b) => sum + b.totalPrice,
-      0
-    );
-
-    let filterLabel = 'All Time';
-    if (dateRange.startDate && dateRange.endDate && activeFilter === 'all') {
-      filterLabel = `${dateRange.startDate.toLocaleDateString()} to ${dateRange.endDate.toLocaleDateString()}`;
-    } 
-    
-    if (activeFilter === 'today') filterLabel = 'Today';
-    if (activeFilter === 'week') filterLabel = 'This Week';
-    if (activeFilter === 'last-month') filterLabel = 'Last Month';
-
+  if (!allBookingsForFilter || allBookingsForFilter.length === 0) {
     return {
-      totalRevenue: totalRevenue.toLocaleString(),
-      totalTickets: activeBookings.length,
-      activeBookings: finalBookings.length,
-      cancelledBookings: finalBookings.filter((b) => b.isCancelled).length,
-      filterLabel,
+      totalRevenue: "0",
+      activeRevenue: "0",
+      cancelledRevenue: "0",
+      activeBookings: 0,
+      cancelledBookings: 0,
+      filterLabel: activeFilter === "Custom" ? formatDateRangeDisplay() : activeFilter,
+      totalTickets: totalBookingsCount,
     };
-  }, [finalBookings, dateRange.startDate, dateRange.endDate, activeFilter]);
+  }
 
-  // ------------------ Print ------------------
-  const handlePrint = () => {
-    // Standard print logic remains the same
-    const printTitle = `Movie Booking Report (${summaryStats.filterLabel})`;
-    const printContent = document.getElementById("bookings-section")?.outerHTML;
+  // Separate active and cancelled bookings
+  const cancelledBookingsArr = allBookingsForFilter.filter((b) => b.isCancelled);
+  const activeBookingsArr = allBookingsForFilter.filter((b) => !b.isCancelled);
 
-    if (!printContent) return;
+  // Calculate total revenue (all bookings)
+  const totalRevenue = Number(
+    allBookingsForFilter
+      .reduce((sum, b) => sum + Number(b.totalPrice || 0), 0)
+      .toFixed(1)
+  );
 
-    const newWin = window.open("", "", "width=800,height=600");
-    if (newWin) {
-      newWin.document.write(`
-        <html>
-          <head>
-            <title>${printTitle}</title>
-            <style>
-              @page { size: A4; margin: 15mm; }
-              body { font-family: sans-serif; padding: 0; color: #333; }
-              h1 { font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #1a202c; }
-              h2 { font-size: 24px; color: #1a202c; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-bottom: 20px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-              th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
-              th { background: #f0f4f8; font-weight: bold; color: #4a5568; }
-              tr:nth-child(even) { background-color: #f7f7f7; }
-              .cancelled { color: #e53e3e; font-weight: bold; }
-              .active { color: #38a169; font-weight: bold; }
+  // Active revenue
+  const activeRevenue = Number(
+    activeBookingsArr
+      .reduce((sum, b) => sum + Number(b.totalPrice || 0), 0)
+      .toFixed(1)
+  );
 
-              #stats-grid { 
-                display: grid; 
-                grid-template-columns: repeat(4, 1fr); 
-                gap: 20px; 
-                margin-bottom: 30px;
-                padding: 10px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-              }
-              .card {
-                padding: 15px;
-                border: 1px solid #eee;
-                border-radius: 8px;
-                background-color: #f9f9f9;
-                text-align: center;
-              }
-              .card h2 {
-                font-size: 16px;
-                color: #4c51bf;
-                margin-bottom: 5px;
-                border-bottom: none;
-                padding-bottom: 0;
-              }
-              .card p {
-                font-size: 20px;
-                font-weight: bold;
-                margin: 0;
-              }
-            </style>
-          </head>
-          <body>
-            <h1>${printTitle}</h1>
-            <p style="margin-top: -10px; margin-bottom: 20px; font-style: italic; color: #555;">Report Period: ${summaryStats.filterLabel}</p>
-            <div id="stats-grid">
-              <div class="card"><h2>Total Revenue</h2><p style="color: #38a169;">PKR ${summaryStats.totalRevenue}</p></div>
-              <div class="card"><h2>Tickets Sold</h2><p style="color: #4299e1;">${summaryStats.totalTickets}</p></div>
-              <div class="card"><h2>Active Bookings</h2><p style="color: #805ad5;">${summaryStats.activeBookings}</p></div>
-              <div class="card"><h2>Cancelled Bookings</h2><p style="color: #e53e3e;">${summaryStats.cancelledBookings}</p></div>
-            </div>
-            <h2>Bookings Details</h2>
-            <div id="print-bookings-table">${printContent}</div>
-            
-            <script>
-                const table = document.getElementById('print-bookings-table');
-                table.querySelector('table').classList.remove('min-w-full', 'divide-y', 'divide-gray-700');
-                table.querySelector('thead').classList.remove('bg-gray-800');
-                table.querySelector('tbody').classList.remove('bg-gray-900', 'divide-y', 'divide-gray-600');
-                
-                table.querySelectorAll('th, td').forEach(el => el.removeAttribute('class'));
-                
-                table.querySelectorAll('thead tr th').forEach(el => {
-                    el.style.cssText = 'border-bottom: 2px solid #ccc; background-color: #f0f4f8; color: #4a5568;';
-                });
-                
-                table.querySelectorAll('.print\\:hidden').forEach(el => el.remove());
+  // Cancelled revenue
+  const cancelledRevenue = Number(
+    cancelledBookingsArr
+      .reduce((sum, b) => sum + Number(b.totalPrice || 0), 0)
+      .toFixed(1)
+  );
 
-            </script>
-          </body>
-        </html>
-      `);
-      newWin.document.close();
-      newWin.print();
-    }
+  return {
+    totalRevenue: totalRevenue.toLocaleString(),
+    activeRevenue: activeRevenue.toLocaleString(),
+    cancelledRevenue: cancelledRevenue.toLocaleString(),
+    activeBookings: activeBookingsArr.length,
+    cancelledBookings: cancelledBookingsArr.length,
+    filterLabel: activeFilter === "Custom" ? formatDateRangeDisplay() : activeFilter,
+    totalTickets: totalBookingsCount,
   };
+}, [chartAndSummaryData, activeFilter, totalBookingsCount]);
 
-  if (loading) {
+
+  // ------------------ Print Setup ------------------
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Movie Booking Report (${summaryStats.filterLabel})`,
+  });
+
+  // ------------------ Loading State ------------------
+  if (loading && totalBookingsCount === 0) {
     return (
       <div className="flex items-center justify-center h-screen text-2xl font-semibold text-indigo-400 bg-gray-950">
+        <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
         Loading Bookings Report...
       </div>
     );
   }
 
-  // Helper for button styling
-  const getButtonClass = (period: 'today' | 'week' | 'last-month' | 'all') =>
-    `px-4 py-2 text-sm font-semibold rounded-lg transition duration-200 flex-shrink-0 ${
-      activeFilter === period
-        ? 'bg-indigo-600 text-white shadow-lg'
-        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-    }`;
-
-  const getCalendarButtonClass = () =>
-    `px-4 py-2 text-sm font-semibold rounded-lg transition duration-200 flex items-center gap-2 ${
-      showDatePicker
-        ? 'bg-red-600 text-white shadow-lg hover:bg-red-700'
-        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg'
-    }`;
-
-
-  // ------------------ UI ------------------
+  // ------------------ UI Rendering ------------------
   return (
     <>
-      <div className="h-[calc(100vh-79px)] p-8 bg-gray-950 text-gray-200">
+      <div className="h-full  overflow-hidden h[calc(100vh-79px)] p-8 bg-gray-950 scrollbar-y text-gray-200 print-area-container overflow-y-auto">
+
         {/* Title + Print Button */}
         <div className="flex justify-between items-center mb-8 print:hidden">
-          <h1 className="text-4xl font-extrabold text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text">
+          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
             🎬 Movie Booking Reports
           </h1>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 cursor-pointer rounded-lg text-white font-semibold shadow-lg transition duration-200"
+            className="flex items-center gap-2 px-4 py-2 cursor-pointer bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white font-semibold shadow-lg transition duration-200"
           >
             <Printer className="w-5 h-5" />
             Print Report
           </button>
         </div>
 
-      {/* Summary Grid */}
-      <div id="stats-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <Card title="Total Revenue" icon={DollarSign}>
-          <p className="text-3xl font-bold text-green-400">
-            PKR {summaryStats.totalRevenue}
-          </p>
-          <p className="text-sm text-gray-400 mt-2">
-            for period: **{summaryStats.filterLabel}**
-          </p>
-        </Card>
-        <Card title="Tickets Sold" icon={Ticket}>
-          <p className="text-3xl font-bold text-blue-400">
-            {summaryStats.totalTickets}
-          </p>
-        </Card>
-        <Card title="Active Bookings" icon={ClipboardList}>
-          <p className="text-3xl font-bold text-purple-400">
-            {summaryStats.activeBookings}
-          </p>
-        </Card>
-        <Card title="Cancelled" icon={Layers}>
-          <p className="text-3xl font-bold text-red-400">
-            {summaryStats.cancelledBookings}
-          </p>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10 print:hidden">
-        <Card title="Revenue Over Time" icon={TrendingUp}>
-          <ResponsiveContainer width="100%" height={300} key={chartKey}>
-            <LineChart data={revenueOverTime} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis 
-                dataKey="date" 
-                stroke="#9CA3AF" 
-                tick={{ fontSize: 12 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                stroke="#9CA3AF" 
-                tick={{ fontSize: 12 }} 
-                tickFormatter={(value: number) => `PKR ${value.toLocaleString()}`}
-              />
-              <Tooltip 
-                contentStyle={{ backgroundColor: "#1F2937", border: "none", borderRadius: "8px" }}
-                labelStyle={{ color: '#E5E7EB', fontWeight: 'bold' }}
-                formatter={(value: number) => [`PKR ${value.toLocaleString()}`, 'Revenue']}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="revenue" 
-                stroke="#6366F1" 
-                strokeWidth={3} 
-                dot={{ r: 4 }}
-                activeDot={{ r: 8 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Revenue by Payment Method" icon={CreditCard}>
-          <ResponsiveContainer width="100%" height={300}>
-           <PieChart>
-             <Pie
-               data={revenueByPayment}
-               dataKey="value"
-               nameKey="method"
-               cx="50%"
-               cy="50%"
-               innerRadius={60}
-               outerRadius={100}
-               fill="#8884d8"
-               label={({ method, percent }) => `${method} (${((percent as number) * 100).toFixed(0)}%)`}
-               stroke="#111827"
-               strokeWidth={2}
-             >
-               {revenueByPayment.map((_, idx) => (
-                 <Cell
-                   key={`cell-${idx}`}
-                   fill={['#6366f1', '#10b981', '#f59e0b', '#ef4444'][idx % 4]} 
-                 />
-               ))}
-             </Pie>
-             <Tooltip 
-               contentStyle={{ backgroundColor: "#1F2937", border: "none", borderRadius: "8px" }}
-               formatter={(value: number, name: string) => [`PKR ${value.toLocaleString()}`, name]}
-               labelStyle={{ color: '#E5E7EB', fontWeight: 'bold' }}
-             />
-             <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ color: 'white' }} />
-           </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      {/* Bookings Table with Filters */}
-      <div className="mt-10">
-        <h2 className="text-3xl font-extrabold mb-6 text-white flex items-center gap-3">
-          <ClipboardList className='w-7 h-7 text-indigo-400'/>
-          Bookings Details
-        </h2>
-
-        {/* Filters and Search Bar */}
-        <div className="flex flex-col gap-4 mb-6 p-4 bg-gray-900 rounded-xl border border-gray-800/70 print:hidden">
+        {/* PRINT TARGET START */}
+        <div ref={printRef} className="print-target-content p-0 m-0">
           
-          {/* Quick Filter Buttons */}
-          <div className="flex gap-3 justify-start overflow-x-auto pb-2">
-            <span className="text-gray-400 flex items-center pr-2 font-semibold text-sm whitespace-nowrap">
-                <Filter className='w-4 h-4 mr-1'/> Quick Filters:
-            </span>
-            <button
-              onClick={() => handleQuickFilter('today')}
-              className={getButtonClass('today')}
-            >
-              Today
-            </button>
-            <button
-              onClick={() => handleQuickFilter('week')}
-              className={getButtonClass('week')}
-            >
-              This Week
-            </button>
-            <button
-              onClick={() => handleQuickFilter('last-month')}
-              className={getButtonClass('last-month')}
-            >
-              Last Month
-            </button>
-            <button
-              onClick={() => handleQuickFilter('all')}
-              className={getButtonClass('all')}
-            >
-              All Time
-            </button>
+          {/* Print Title */}
+          <h1 className="text-3xl font-extrabold mb-6 text-gray-900 hidden print:block print-title">
+            Movie Booking Report <span className='text-lg font-normal text-gray-600'>({summaryStats.filterLabel})</span>
+          </h1>
+
+          {/* Summary Grid */}
+          <div id="stats-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 stats-grid">
+
+            <Card title="Total Revenue (Active)" icon={DollarSign}>
+              <p className="text-3xl font-extrabold text-green-400">PKR {summaryStats.totalRevenue}</p>
+              <p className="text-sm text-red-400 mt-2"> Canceled Revenue ({summaryStats.cancelledRevenue})</p>
+            </Card>
+            <Card title="Total Bookings " icon={Ticket}>
+              <p className="text-4xl font-extrabold text-blue-400">{summaryStats.totalTickets}</p>
+              <p className="text-sm text-gray-400 mt-2">Total bookings both active and cancelled</p>
+            </Card>
+            <Card title="Active Bookings" icon={ClipboardList}>
+              <p className="text-4xl font-extrabold text-purple-400">{summaryStats.activeBookings} </p>
+              <p className="text-sm text-gray-400 mt-2">Active tickets according to data</p>
+            </Card>
+            <Card title="Cancelled Bookings" icon={Layers}>
+              <p className="text-4xl font-extrabold text-red-400">{summaryStats.cancelledBookings}</p>
+              <p className="text-sm text-gray-400 mt-2">Cancelled tickets according to data</p>
+            </Card>
           </div>
 
-          {/* Search and Date Picker Toggle */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <div className='relative flex-grow'>
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Search by Customer, Movie, or Room"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white">
-                  <X className="w-5 h-5" />
-                </button>
-              )}
+          {/* Charts Section */}
+          <div id="charts-section" className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10 print:hidden">
+            <div className='lg:col-span-2'>
+              <Card title="Revenue Over Time" icon={TrendingUp}>
+                <ResponsiveContainer width="100%" height={300} key={chartKey}>
+                  <LineChart data={revenueOverTime} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="date" stroke="#9CA3AF" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
+                    <YAxis stroke="#9CA3AF" tick={{ fontSize: 12 }} tickFormatter={(value: number) => `PKR ${value.toLocaleString()}`} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }} labelStyle={{ color: '#E5E7EB', fontWeight: 'bold' }} formatter={(value: number) => [`PKR ${value.toLocaleString()}`, 'Revenue']} />
+                    <Line type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 8 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
             </div>
-            
-            {/* Calendar Button to TOGGLE Date Picker */}
-            <div className='relative' ref={pickerRef}> 
-              <button 
-                  onClick={() => setShowDatePicker(!showDatePicker)}
-                  className={getCalendarButtonClass()}
-              >
-                  {showDatePicker ? (
-                      <>
-                          <X className='w-5 h-5'/> Close Date Filter
-                      </>
-                  ) : (
-                      <>
-                          <Calendar className='w-5 h-5'/> Select Date Range
-                      </>
-                  )}
-              </button>
 
-              {/* DateRangePicker DROPDOWN/Panel */}
-              {showDatePicker && (
-                <div 
-                    // Dynamic positioning based on the check 
-                    className={`absolute right-0 z-20 mt-2 ${isUpward ? 'bottom-full mb-2' : 'top-full'} bg-black border border-gray-700 rounded-lg shadow-2xl overflow-hidden`}
-                >
-                    <DateRangePicker
-                      onChange={handleDateRangeChange}
-                      ranges={[{
-                        startDate: dateRange.startDate || new Date(), 
-                        endDate: dateRange.endDate || new Date(), 
-                        key: 'selection'
-                      }]}
-                      rangeColors={['#6366F1']}
-                      direction='horizontal'
-                    />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Table Container */}
-        <div id="bookings-section" className="overflow-x-auto rounded-xl shadow-2xl border border-gray-700">
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className="bg-gray-800">
-              <tr>
-                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Customer</th>
-                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Movie</th>
-                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Room</th>
-                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Seat</th>
-                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Showtime</th> 
-                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Price (PKR)</th>
-                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Payment</th>
-                <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider text-indigo-400">Status</th>
-              </tr>
-            </thead>
-        
-            <tbody className="bg-gray-900 divide-y divide-gray-600 ">
-              {finalBookings.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="p-4 text-center text-gray-500">
-                    No bookings found for the applied filters.
-                  </td>
-                </tr>
-              ) : (
-                finalBookings.map((b, index) => (
-                  <tr
-                    key={b._id}
-                    className={`transition duration-150 ease-in-out ${
-                      index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'
-                    } hover:bg-gray-700/70`}
+            <Card title="Revenue by Payment Method" icon={CreditCard}>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={revenueByPayment}
+                    dataKey="value"
+                    nameKey="method"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    label={({ method, percent }) => `${method} (${((percent as number) * 100).toFixed(0)}%)`}
+                    stroke="#111827"
+                    strokeWidth={2}
+                    paddingAngle={3}
                   >
-                    <td className="p-4 whitespace-nowrap font-medium text-gray-100">{b.customerName}</td>
-                    <td className="p-4 whitespace-nowrap text-gray-300">{b.showtimeId?.movie?.title || '—'}</td>
-                    <td className="p-4 whitespace-nowrap text-gray-300">{b.roomId?.name || '—'}</td>
-                    <td className="p-4 whitespace-nowrap text-gray-300">{getSeatDisplay(b.seat)}</td>
-                    <td className="p-4 whitespace-nowrap text-gray-300">
-                      {b.showtimeId?.date && b.showtimeId?.time
-                        ? `${new Date(b.showtimeId.date).toLocaleDateString()} ${b.showtimeId.time}`
-                        : '—'}
-                    </td>
-                    <td className="p-4 whitespace-nowrap font-semibold text-green-400">
-                      {b.totalPrice.toLocaleString()}
-                    </td>
-                    <td className="p-4 whitespace-nowrap">
-                      {b.transactionId && b.bankName ? (
-                        <>
-                          {/* Normal screen view */}
-                          <button
-                            onClick={() =>
-                              setSelectedBank({ transactionId: b.transactionId!, bankName: b.bankName! })
-                            }
-                            className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer bg-gray-800 p-2 rounded print:hidden"
-                            title="View Bank Details"
-                          >
-                            View Details
-                          </button>
-
-                          {/* Print view (hidden on screen, shown only in print) */}
-                          <span className="hidden print:inline text-black">
-                            {b.bankName} (ID: {b.transactionId})
-                          </span>
-                        </>
-                      ) : (
-                        b.paymentMethod
-                      )}
-                    </td>
-
-                    
-                    <td className="p-4 whitespace-nowrap">
-                      {b.isCancelled ? (
-                        <span className="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-red-900 text-red-300 border border-red-700">
-                          Cancelled
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-green-900 text-green-300 border border-green-700">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Bank Details Modal */}
-      {selectedBank && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 print:hidden">
-          <div className="bg-gray-900 p-8 rounded-xl shadow-2xl max-w-md w-full relative border border-indigo-600/50 transform transition-all duration-300 scale-100 opacity-100">
-            <button
-              onClick={() => setSelectedBank(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full bg-gray-800 hover:bg-gray-700 transition"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            
-            <h3 className="text-2xl font-bold mb-6 text-indigo-400 flex items-center gap-2">
-              <Banknote className="w-6 h-6"/>
-              Bank Transaction Details
-            </h3>
-
-            <div className='space-y-4'>
-                <div className='p-4 bg-gray-800 rounded-lg'>
-                    <p className='text-sm font-semibold text-gray-400 mb-1'>Bank Name</p>
-                    <p className="text-lg font-bold text-white">{selectedBank.bankName}</p>
-                </div>
-                <div className='p-4 bg-gray-800 rounded-lg'>
-                    <p className='text-sm font-semibold text-gray-400 mb-1'>Transaction ID</p>
-                    <p className="text-lg font-mono text-yellow-400 break-all">{selectedBank.transactionId}</p>
-                </div>
-            </div>
-            
-            <button
-                onClick={() => setSelectedBank(null)}
-                className='mt-6 w-full py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white font-semibold transition'
-            >
-                Close
-            </button>
+                    {revenueByPayment.map((_, idx) => (
+                      <Cell key={`cell-${idx}`} fill={['#6366f1', '#10b981', '#f59e0b', '#ef4444'][idx % 4]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }} formatter={(value: number, name: string) => [`PKR ${value.toLocaleString()}`, name]} labelStyle={{ color: '#E5E7EB', fontWeight: 'bold' }} />
+                  <Legend layout="horizontal" align="center" verticalAlign="bottom" wrapperStyle={{ color: 'white', paddingTop: '10px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
           </div>
+
+          {/* Bookings Table with Filters */}
+          <div className="mt-10">
+            <h2 className="text-3xl font-extrabold mb-6 text-white flex items-center gap-3 print:hidden">
+              <ClipboardList className="w-7 h-7 text-indigo-400" />
+              Bookings Details
+            </h2>
+
+            {/* Filters and Search Bar */}
+            <div id="filter-bar" className="flex flex-col gap-4 mb-6 p-4 bg-gray-900 rounded-xl border border-gray-800/70 print:hidden">
+              <div className="flex gap-3 justify-start overflow-x-auto pb-2">
+                <span className="text-gray-400 flex items-center pr-2 font-semibold text-sm whitespace-nowrap">
+                  <Filter className="w-4 h-4 mr-1 text-indigo-400" /> Quick Filters:
+                </span>
+                <button onClick={() => handleQuickFilter('Today')} className={getButtonClass('Today')}  style={{"cursor": "pointer"}}>Today</button>
+                <button onClick={() => handleQuickFilter('This Week')} className={getButtonClass('This Week')} style={{"cursor": "pointer"}}>This Week</button>
+                <button onClick={() => handleQuickFilter('This Month')} className={getButtonClass('This Month')} style={{"cursor": "pointer"}}>This Month</button>
+                <button onClick={() => handleQuickFilter('All Time')} className={getButtonClass('All Time')} style={{"cursor": "pointer"}}>All Time</button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Search by Customer, Movie or Room"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white border border-gray-700 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+                
+                <div className="relative" ref={datePickerRef}>
+                  {/* Calendar Toggle Button */}
+                  <button
+                    ref={dateButtonRef}
+                    onClick={handleDatePickerToggle}
+                    className="px-4 py-2 text-sm font-semibold rounded-lg cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 min-w-[200px] justify-center"
+                    title='Click to select custom date range or more filters'
+                    >
+                    <Calendar className="w-5 h-5" /> 
+                    {formatDateRangeDisplay()}
+                  </button>
+                    
+
+                  {/* Date Range Picker Popup */}
+                  {showDatePicker && (
+                    <div className={`absolute right-0 z-50 bg-gray-900 border border-indigo-500 rounded-lg shadow-2xl overflow-hidden p-4 ${
+                      datePickerPosition === 'above' 
+                        ? 'bottom-full mb-2' 
+                        : 'top-full mt-2'
+                    }`}>
+                      <DateRangePicker
+                        ranges={dateRange}
+                        onChange={handleDateRangeChange}
+                        maxDate={new Date()}
+                        editableDateInputs={true}
+                        direction="horizontal"
+                        months={1}
+                        moveRangeOnFirstSelection={false}
+                        rangeColors={['#6366F1']}
+                        showDateDisplay={false}
+                        showPreview={false}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Table Container */}
+            <div id="bookings-table-container" className="overflow-x-auto rounded-xl shadow-2xl border border-gray-700 bg-gray-700 print:shadow-none print:border-none print:bg-white">
+              <table id="bookings-table" className="min-w-full divide-y divide-gray-700 print:divide-gray-300">
+                <thead className="bg-gray-800 text-indigo-200 print:bg-gray-100 print:text-gray-700">
+                  <tr>
+                    <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider">Customer</th>
+                    <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider">Movie</th>
+                    <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider">Room</th>
+                    <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider">Seat</th>
+                    <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider">Showtime</th>
+                    <th className="p-4 text-right text-sm font-semibold uppercase tracking-wider">Price (PKR)</th>
+                    <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider">Payment</th>
+                    <th className="p-4 text-left text-sm font-semibold uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+
+                <tbody className="bg-gray-900 divide-y divide-gray-800 print:bg-white print:divide-gray-200">
+                  {finalBookings.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-gray-400 print:text-gray-600">
+                        No bookings found for the applied filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    finalBookings.map((b) => (
+                      <tr key={b._id} className="text-white hover:bg-gray-800 ...">
+                        <td className="p-4 whitespace-nowrap font-medium">{b.customerName}</td>
+                        <td className="p-4 whitespace-nowrap">{b.showtimeId?.movie?.title || '—'}</td>
+                        <td className="p-4 whitespace-nowrap">{b.roomId?.name || '—'}</td>
+                        <td className="p-4 whitespace-nowrap text-indigo-300">{getSeatDisplay(b.seat)}</td>
+                        <td className="p-4 whitespace-nowrap text-sm">
+                          {b.showtimeId?.date && b.showtimeId?.time
+                            ? `${new Date(b.showtimeId.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} @ ${b.showtimeId.time}`
+                            : '—'}
+                        </td>
+                        <td className="p-4 whitespace-nowrap font-bold text-right text-green-400">{b.totalPrice.toLocaleString()}</td>
+                        <td className="p-4 whitespace-nowrap text-sm">{b.paymentMethod}</td>
+                        <td className="p-4 whitespace-nowrap">
+                          {b.isCancelled ? (
+                            <span className="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-red-700/30 text-red-300">
+                              Cancelled
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full bg-green-700/30 text-green-300">
+                              Active
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex justify-between items-center mt-2 p-4 print:hidden bg-gray-900 rounded-xl border border-gray-800 ">
+              <div className="flex items-center space-x-4">
+                <p className="text-sm text-gray-400">
+                  Showing ({finalBookings.length}) items on this page. Total bookings found: ({totalBookingsCount.toLocaleString()})
+                </p>
+                
+                {/* Records per page selector */}
+                <div className="relative" ref={limitDropdownRef}>
+                  <button
+                    onClick={handleLimitDropdownToggle}
+                    className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-800 text-gray-300 border border-gray-700 rounded-lg hover:bg-gray-700 transition cursor-pointer"
+                  >
+                    <span>Show: {limit}</span>
+
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  
+                  {showLimitDropdown && (
+                    <div className="absolute bottom-full mb-2 left-0 z-50 bg-gray-800 border border-gray-700 rounded-lg shadow-lg min-w-[100px]">
+                      {limitOptions.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleLimitChange(option)}
+                          className={`w-full px-3 py-2 text-sm text-left hover:bg-indigo-600 hover:text-white transition ${
+                            limit === option 
+                              ? 'bg-indigo-600 text-white' 
+                              : 'text-gray-300'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1 || loading} 
+                  className="p-2 rounded-full  cursor-pointer bg-gray-800 text-gray-300 hover:bg-indigo-600 hover:text-white disabled:opacity-50 disabled:hover:bg-gray-800 transition"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm font-semibold text-white">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages || loading}
+                  className="p-2 rounded-full cursor-pointer bg-gray-800 text-gray-300 hover:bg-indigo-600 hover:text-white disabled:opacity-50 disabled:hover:bg-gray-800 transition"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+          </div>
+          {/* PRINT TARGET END */}
         </div>
-      )}
+
+        {/* Bank Details Modal */}
+        {selectedBank && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 modal-overlay print:hidden">
+            <div className="bg-gray-900 p-8 rounded-xl shadow-2xl max-w-md w-full relative border border-indigo-600/50 transform scale-100 opacity-100">
+              <button onClick={() => setSelectedBank(null)} className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full bg-gray-800 hover:bg-gray-700 transition">
+                <X className="w-6 h-6" />
+              </button>
+              <h3 className="text-2xl font-bold text-indigo-400 mb-4 flex items-center gap-2">
+                <Banknote className="w-6 h-6" /> Bank Transfer Details
+              </h3>
+              <div className="space-y-3">
+                <p className="text-gray-300"><strong>Bank Name:</strong> <span className="text-white">{selectedBank.bankName}</span></p>
+                <p className="text-gray-300"><strong>Transaction ID:</strong> <span className="text-white break-all">{selectedBank.transactionId}</span></p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -35,7 +35,7 @@ export default function ShowTimesPage() {
   theme="dark"
 />
   <Sidebar />
-  <main className="flex-1 bg-gray-100  h-[calc(100vh-79px)]   ">
+  <main className="flex-1 bg-gray-100  h-[calc(100vh-79px)] overflow-y-auto scrollbar-y  ">
     <ShowTimes />
   </main>
 </div>
