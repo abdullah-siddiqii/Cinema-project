@@ -25,3 +25,4 @@ export default function HomeWrapper({ children }: HomeWrapperProps) {
 
   return <>{children}</>;
 }
+ 
